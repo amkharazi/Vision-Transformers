@@ -115,5 +115,6 @@ class TRL(nn.Module):
         
     def forward(self, x):
         out = torch.einsum(self.out_formula, (x, self.w)).to(self.device)
-        out += self.b 
+        if self.bias:
+            out += self.b 
         return out # You may rearrange your out tensor to your desired shapes

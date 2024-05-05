@@ -1,1 +1,84 @@
-#
+
+import torch
+import torch.nn as nn
+
+class TCL(nn.Module):
+    def __init__(self, input_size, rank, ignore_modes = (0,), bias = True, device = 'cuda'):
+        super(TCL, self).__init__()
+        
+        alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQERSUVWXYZ'
+        self.device = device
+        self.bias = bias
+        
+        if isinstance(input_size, int):
+            self.input_size = (input_size, )
+        else:
+            self.input_size = tuple(input_size)
+        
+        if isinstance(rank, int):
+            self.rank = (rank, )
+        else:
+            self.rank = tuple(rank)
+        
+        if isinstance(ignore_modes, int):
+            self.ignore_modes = (rank, )
+        else:
+            self.ignore_modes = tuple(ignore_modes)
+        
+        # remove ignored modes from the input size
+        new_size = []
+        for i in range(len(self.input_size)):
+            if i in self.ignore_modes:
+                continue
+            else:
+                new_size.append(self.input_size[i])
+        
+        if self.bias:
+            self.b = nn.Parameter(torch.randn(self.rank), requires_grad=True)
+        else:
+            self.b = None
+            
+        # Tucker Decomposition method for TCL
+                                   
+        # List of all factors
+        parameter_list = []
+        for i,r in enumerate(self.rank):
+            parameter_list.append(nn.Parameter(torch.randn(r, new_size[i]), requires_grad=True))
+        self.factors = nn.ParameterList().extend(parameter_list)
+        
+        # Generate formula for output :
+        index = 0
+        formula = ''
+        core_str = ''
+        extend_str = ''
+        out_str = ''
+        for i in range(len(self.input_size)):
+            formula+=alphabet[index]
+            if i not in self.ignore_modes:
+                core_str+=alphabet[index]
+            else:
+                extend_str+=alphabet[index]   
+            index+=1
+            if i==len(self.input_size)-1:
+                formula+=','
+        
+        for l,_ in enumerate(self.factors):
+            formula+=core_str[l]
+            formula+=alphabet[index]
+            out_str+=alphabet[index]
+            index+=1
+            if l < len(self.factors) - 1:
+                formula+=','
+            elif l == len(self.factors) - 1:
+                    formula+='->'
+        formula+=extend_str+out_str  
+            
+        self.out_formula = formula
+        # print(formula)        
+        
+    def forward(self, x):
+        out = torch.einsum(self.out_formula, (tuple([x] + [f for f in self.factors]))).to(self.device)
+        if self.bias:
+            out += self.b
+        return out # You may rearrange your out tensor to your desired shapes 
+    
