@@ -2,6 +2,8 @@
 import torch
 import torch.nn as nn
 
+# torch.autograd.set_detect_anomaly(True)
+
 class TCL(nn.Module):
     def __init__(self, input_size, rank, ignore_modes = (0,), bias = True, device = 'cuda'):
         super(TCL, self).__init__()
@@ -34,18 +36,17 @@ class TCL(nn.Module):
                 new_size.append(self.input_size[i])
         
         if self.bias:
+            self.register_parameter('b', nn.Parameter(torch.randn(self.rank, device=self.device), requires_grad=True))
             self.b = nn.Parameter(torch.randn(self.rank), requires_grad=True)
         else:
-            self.b = None
+            self.register_parameter('b',None)
             
         # Tucker Decomposition method for TCL
                                    
         # List of all factors
-        parameter_list = []
         for i,r in enumerate(self.rank):
-            parameter_list.append(nn.Parameter(torch.randn(r, new_size[i]), requires_grad=True))
-        self.factors = nn.ParameterList().extend(parameter_list)
-        
+            self.register_parameter(f'u{i}', nn.Parameter(torch.randn((r, new_size[i]), device = self.device), requires_grad=True))
+
         # Generate formula for output :
         index = 0
         formula = ''
@@ -62,14 +63,14 @@ class TCL(nn.Module):
             if i==len(self.input_size)-1:
                 formula+=','
         
-        for l,_ in enumerate(self.factors):
+        for l in range(len(self.rank)):
             formula+=core_str[l]
             formula+=alphabet[index]
             out_str+=alphabet[index]
             index+=1
-            if l < len(self.factors) - 1:
+            if l < len(self.rank) - 1:
                 formula+=','
-            elif l == len(self.factors) - 1:
+            elif l == len(self.rank) - 1:
                     formula+='->'
         formula+=extend_str+out_str  
             
@@ -77,7 +78,12 @@ class TCL(nn.Module):
         # print(formula)        
         
     def forward(self, x):
-        out = torch.einsum(self.out_formula, (tuple([x] + [f for f in self.factors]))).to(self.device)
+        operands = [x]
+        for i in range(len(self.rank)):
+            operands.append(getattr(self, f'u{i}'))  
+
+        self.w_operands = operands
+        out = torch.einsum(self.out_formula, operands)
         if self.bias:
             out += self.b
         return out # You may rearrange your out tensor to your desired shapes 

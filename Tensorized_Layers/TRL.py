@@ -2,6 +2,8 @@
 import torch
 import torch.nn as nn
 
+# torch.autograd.set_detect_anomaly(True)
+
 class TRL(nn.Module):
     def __init__(self, input_size, output, rank, ignore_modes = (0,), bias = True, device = 'cuda'):
         super(TRL, self).__init__()
@@ -41,20 +43,18 @@ class TRL(nn.Module):
         
         self.w_size = tuple(new_size) + self.output
         if self.bias:
-            self.b = nn.Parameter(torch.randn(self.output), requires_grad=True)
+            self.register_parameter('b', nn.Parameter(torch.randn(self.output, device = self.device), requires_grad=True))
         else:
-            self.b = None
+            self.register_parameter('b',None)
             
         # Tucker Decomposition method for TRL
         
-        self.core = nn.Parameter(torch.randn(self.rank), requires_grad=True)
-                           
+        self.register_parameter('core', nn.Parameter(torch.randn(self.rank, device = self.device), requires_grad=True))
+
         # List of all factors
-        parameter_list = []
         for i,r in enumerate(self.rank):
-            parameter_list.append(nn.Parameter(torch.randn(r, self.w_size[i]), requires_grad=True))
-        self.factors = nn.ParameterList().extend(parameter_list)
-        
+            self.register_parameter(f'u{i}', nn.Parameter(torch.randn((r, self.w_size[i]), device = self.device), requires_grad=True))      
+
         # Generate formula for w :
         
         index = 0
@@ -68,22 +68,26 @@ class TRL(nn.Module):
                 formula+=','
         core_str = formula[:len(formula)-1]
                 
-        for l,_ in enumerate(self.factors):
+        for l in range(len(self.rank)):
             formula+=core_str[l]
             formula+=alphabet[index]
             w_str+=alphabet[index]
             index+=1
-            if l < len(self.factors) - 1:
+            if l < len(self.rank) - 1:
                 formula+=','
-            elif l == len(self.factors) - 1:
+            elif l == len(self.rank) - 1:
                     formula+='->'
         
         formula+=w_str
-        # print(formula)
+        print(formula)
         
-        self.w_formula = formula        
-        self.w = torch.einsum(self.w_formula, (tuple([self.core] + [f for f in self.factors]))).to(self.device)
-        
+        self.w_formula = formula   
+        operands = [self.core]
+        for i in range(len(self.rank)):
+            operands.append(getattr(self, f'u{i}'))  
+
+        self.w_operands = operands
+        # self.w = torch.einsum(self.w_formula, operands)
         
         # Generate formula for Generalized Inner Product of W and X:
         index = 0
@@ -111,10 +115,11 @@ class TRL(nn.Module):
          
         formula+=extend_str+out_str       
         self.out_formula = formula
-        # print(formula)
+        print(formula)
         
     def forward(self, x):
-        out = torch.einsum(self.out_formula, (x, self.w)).to(self.device)
+        w = torch.einsum(self.w_formula, self.w_operands)
+        out = torch.einsum(self.out_formula, (x, w))
         if self.bias:
             out += self.b 
         return out # You may rearrange your out tensor to your desired shapes
