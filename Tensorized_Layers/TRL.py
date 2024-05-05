@@ -79,7 +79,7 @@ class TRL(nn.Module):
                     formula+='->'
         
         formula+=w_str
-        print(formula)
+        # print(formula)
         
         self.w_formula = formula   
         operands = [self.core]
@@ -115,7 +115,7 @@ class TRL(nn.Module):
          
         formula+=extend_str+out_str       
         self.out_formula = formula
-        print(formula)
+        # print(formula)
         
     def forward(self, x):
         w = torch.einsum(self.w_formula, self.w_operands)
