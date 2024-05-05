@@ -43,17 +43,17 @@ class TRL(nn.Module):
         
         self.w_size = tuple(new_size) + self.output
         if self.bias:
-            self.register_parameter('b', nn.Parameter(torch.randn(self.output, device = self.device), requires_grad=True))
+            self.register_parameter('b', nn.Parameter(torch.empty(self.output, device = self.device), requires_grad=True))
         else:
             self.register_parameter('b',None)
             
         # Tucker Decomposition method for TRL
         
-        self.register_parameter('core', nn.Parameter(torch.randn(self.rank, device = self.device), requires_grad=True))
+        self.register_parameter('core', nn.Parameter(torch.empty(self.rank, device = self.device), requires_grad=True))
 
         # List of all factors
         for i,r in enumerate(self.rank):
-            self.register_parameter(f'u{i}', nn.Parameter(torch.randn((r, self.w_size[i]), device = self.device), requires_grad=True))      
+            self.register_parameter(f'u{i}', nn.Parameter(torch.empty((r, self.w_size[i]), device = self.device), requires_grad=True))      
 
         # Generate formula for w :
         

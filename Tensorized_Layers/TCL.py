@@ -36,8 +36,8 @@ class TCL(nn.Module):
                 new_size.append(self.input_size[i])
         
         if self.bias:
-            self.register_parameter('b', nn.Parameter(torch.randn(self.rank, device=self.device), requires_grad=True))
-            self.b = nn.Parameter(torch.randn(self.rank), requires_grad=True)
+            self.register_parameter('b', nn.Parameter(torch.empty(self.rank, device=self.device), requires_grad=True))
+            self.b = nn.Parameter(torch.empty(self.rank), requires_grad=True)
         else:
             self.register_parameter('b',None)
             
@@ -45,7 +45,7 @@ class TCL(nn.Module):
                                    
         # List of all factors
         for i,r in enumerate(self.rank):
-            self.register_parameter(f'u{i}', nn.Parameter(torch.randn((r, new_size[i]), device = self.device), requires_grad=True))
+            self.register_parameter(f'u{i}', nn.Parameter(torch.empty((r, new_size[i]), device = self.device), requires_grad=True))
 
         # Generate formula for output :
         index = 0
