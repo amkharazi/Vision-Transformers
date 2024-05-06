@@ -12,7 +12,7 @@ sys.path.append('..')
 from Utils.Accuracy_measures import topk_accuracy
 from Utils.TinyImageNet_loader import get_tinyimagenet_dataloaders
 from Utils.Num_parameter import count_parameters
-from Models.vit_tensorized import VisionTransformer
+from torchvision.models import vit_b_16
 
 import torchvision.transforms as transforms
 from torch import nn
@@ -61,20 +61,8 @@ if __name__ == '__main__':
                                                         batch_size=64,
                                                         image_size=224)
     # Set up the vit model
-    model = VisionTransformer(input_size=(64,3,224,224),
-                patch_size=16,
-                num_classes=1000,
-                embed_dim=(16,16,3),
-                num_heads=(2,2,3),
-                num_layers=12,
-                mlp_dim=(32,32,3),
-                dropout=0.1,
-                bias=True,
-                out_embed=True,
-                device=device,
-                ignore_modes=(0,1,2),
-                Tensorized_mlp=True).to(device)
 
+    model = vit_b_16().to(device)
     
     # Load pretrained from Tests
     
@@ -145,7 +133,7 @@ if __name__ == '__main__':
         return report_test
     
     # Set up the directories to save the results
-    TEST_ID = 'Test_ID002'
+    TEST_ID = 'Test_ID003'
     result_dir = os.path.join('../results', TEST_ID)
     result_subdir = os.path.join(result_dir, 'accuracy_stats')
     model_subdir = os.path.join(result_dir, 'model_stats')

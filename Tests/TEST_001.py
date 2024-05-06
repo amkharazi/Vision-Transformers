@@ -67,7 +67,7 @@ if __name__ == '__main__':
                 embed_dim=16*16*3,
                 num_heads=12,
                 num_layers=12,
-                mlp_dim=1024,
+                mlp_dim=3072,
                 dropout=0.1,
                 bias=True,
                 out_embed=True,
