@@ -11,9 +11,9 @@ class Encoder(nn.Module):
     def __init__(self,input_size, patch_size, embed_dim, num_heads, mlp_dim, dropout=0.5, bias = True, out_embed = True, device = 'cuda', ignore_modes=(0,1,2), Tensorized_mlp = True):
         super(Encoder, self).__init__()
         self.tensorized_mlp = Tensorized_mlp
-        self.tcl_input_size = (input_size[0], input_size[2]//patch_size, input_size[3]//patch_size,
+        self.tcl_input_size = (input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size,
                                 embed_dim[0], embed_dim[1], embed_dim[2]) # patched input image size
-        self.trl_input_size = (input_size[0], input_size[2]//patch_size, input_size[3]//patch_size,
+        self.trl_input_size = (input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size,
                                 mlp_dim[0], mlp_dim[1], mlp_dim[2])
         self.trl_ranks = tuple([i for i in mlp_dim+embed_dim])  # same rank for trl
         # print(self.trl_ranks)

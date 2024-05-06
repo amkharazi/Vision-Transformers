@@ -26,7 +26,7 @@ class MultiHeadAttention(nn.Module):
         
         self.out_embed = out_embed
 
-        self.tcl_input_size =  (self.input_size[0], self.input_size[2]//self.patch_size, self.input_size[3]//self.patch_size,
+        self.tcl_input_size =  (self.input_size[0], self.input_size[2]//self.patch_size + 1, self.input_size[3]//self.patch_size,
                                 self.embed_dim[0], self.embed_dim[1], self.embed_dim[2]) # patched input image size
 
 

@@ -67,8 +67,8 @@ class TCL(nn.Module):
                 formula+=','
         
         for l in range(len(self.rank)):
-            formula+=core_str[l]
             formula+=alphabet[index]
+            formula+=core_str[l]
             out_str+=alphabet[index]
             index+=1
             if l < len(self.rank) - 1:
@@ -87,7 +87,6 @@ class TCL(nn.Module):
         for i in range(len(self.rank)):
             operands.append(getattr(self, f'u{i}'))  
 
-        self.w_operands = operands
         out = torch.einsum(self.out_formula, operands)
         if self.bias:
             out += self.b
