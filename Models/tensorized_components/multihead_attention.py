@@ -3,11 +3,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
+from Tensorized_Layers.TCL import TCL
+# from Tensorized_Layers.TRL import TRL
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, embed_dim, num_heads, out_embed = True):
+    def __init__(self,input_size, patch_size, embed_dim, num_heads, bias = True, out_embed = True, device = 'cuda', ignore_modes = (0,1,2)):
         super(MultiHeadAttention, self).__init__()
+        self.input_size = input_size
+        self.patch_size = patch_size
         self.embed_dim = embed_dim
+        self.device = device
+        self.bias = bias
+        self.ignore_modes = ignore_modes
+
         self.h1 = num_heads[0]
         self.h2 = num_heads[1]
         self.h3 = num_heads[2]
@@ -18,31 +26,41 @@ class MultiHeadAttention(nn.Module):
         
         self.out_embed = out_embed
 
+        self.tcl_input_size =  (self.input_size[0], self.input_size[2]//self.patch_size, self.input_size[3]//self.patch_size,
+                                self.embed_dim[0], self.embed_dim[1], self.embed_dim[2]) # patched input image size
+
+
         # first dim is the dimension of embedded x second dim is the embedded dimension of q/k/v (could be different)
         #  Q
-        self.w_e1_q = nn.Parameter(torch.randn(self.embed_dim[0], self.embed_dim[0]), requires_grad=True)
-        self.w_e2_q = nn.Parameter(torch.randn(self.embed_dim[1], self.embed_dim[1]), requires_grad=True)
-        self.w_e3_q = nn.Parameter(torch.randn(self.embed_dim[2], self.embed_dim[2]), requires_grad=True)
-
+        self.tcl_q = TCL(input_size=self.tcl_input_size,
+                        rank=self.embed_dim,
+                        ignore_modes=self.ignore_modes,
+                        bias=self.bias, 
+                        device=self.device)
         # K
-        self.w_e1_k = nn.Parameter(torch.randn(self.embed_dim[0], self.embed_dim[0]), requires_grad=True)
-        self.w_e2_k = nn.Parameter(torch.randn(self.embed_dim[1], self.embed_dim[1]), requires_grad=True)
-        self.w_e3_k = nn.Parameter(torch.randn(self.embed_dim[2], self.embed_dim[2]), requires_grad=True)
+        self.tcl_k = TCL(input_size=self.tcl_input_size,
+                        rank=self.embed_dim,
+                        ignore_modes=self.ignore_modes,
+                        bias=self.bias, 
+                        device=self.device)
 
         # V
-        self.w_e1_v = nn.Parameter(torch.randn(self.embed_dim[0], self.embed_dim[0]), requires_grad=True)
-        self.w_e2_v = nn.Parameter(torch.randn(self.embed_dim[1], self.embed_dim[1]), requires_grad=True)
-        self.w_e3_v = nn.Parameter(torch.randn(self.embed_dim[2], self.embed_dim[2]), requires_grad=True)
-
+        self.tcl_v = TCL(input_size=self.tcl_input_size,
+                        rank=self.embed_dim,
+                        ignore_modes=self.ignore_modes,
+                        bias=self.bias, 
+                        device=self.device)
         if self.out_embed:
-            self.w_e1_out = nn.Parameter(torch.randn(self.embed_dim[0], self.embed_dim[0]), requires_grad=True)
-            self.w_e2_out = nn.Parameter(torch.randn(self.embed_dim[1], self.embed_dim[1]), requires_grad=True)
-            self.w_e3_out = nn.Parameter(torch.randn(self.embed_dim[2], self.embed_dim[2]), requires_grad=True)
+            self.tcl_out = TCL(input_size=self.tcl_input_size,
+                        rank=self.embed_dim,
+                        ignore_modes=self.ignore_modes,
+                        bias=self.bias, 
+                        device=self.device)
 
     def forward(self, x):
-        q = torch.einsum('b p q h w c , h x , w y , c z -> b p q x y z', (x, self.w_e1_q, self.w_e2_q, self.w_e3_q))
-        k = torch.einsum('b p q h w c , h x , w y , c z -> b p q x y z', (x, self.w_e1_k, self.w_e2_k, self.w_e3_k))
-        v = torch.einsum('b p q h w c , h x , w y , c z -> b p q x y z', (x, self.w_e1_v, self.w_e2_v, self.w_e3_v))
+        q = self.tcl_q(x)
+        k = self.tcl_k(x)
+        v = self.tcl_v(x)
 
         Q = rearrange(q, 'b p1 p2 (x h1) (y h2) (z h3) -> b p1 p2 h1 h2 h3 x y z', h1 = self.h1, h2 = self.h2, h3 = self.h3)
         K = rearrange(k, 'b p1 p2 (x h1) (y h2) (z h3) -> b p1 p2 h1 h2 h3 x y z', h1 = self.h1, h2 = self.h2, h3 = self.h3)
@@ -60,6 +78,6 @@ class MultiHeadAttention(nn.Module):
         x = rearrange(x, 'b h1 h2 h3 p1 p2 x y z  -> b p1 p2 (x h1) (y h2) (z h3)', h1 = self.h1, h2 = self.h2, h3 = self.h3)
 
         if self.out_embed:
-            print(x.shape)
-            x = torch.einsum('b p q h w c , h x , w y , c z -> b p q x y z', (x, self.w_e1_out, self.w_e2_out, self.w_e3_out))
+            x = self.tcl_out(x)
+
         return x

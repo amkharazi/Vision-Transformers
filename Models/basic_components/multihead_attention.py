@@ -5,8 +5,14 @@ import torch.nn.functional as F
 from einops import rearrange
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, embed_dim, num_heads, out_embed = True):
+    def __init__(self,input_size, patch_size, embed_dim, num_heads, bias = True, out_embed = True, device = 'cuda', ignore_modes = None):
         super(MultiHeadAttention, self).__init__()
+        self.input_size = input_size
+        self.patch_size = patch_size
+        self.device = device
+        self.bias = bias
+        self.ignore_modes = ignore_modes
+
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
@@ -15,13 +21,13 @@ class MultiHeadAttention(nn.Module):
         self.out_embed = out_embed
 
         # first dim is the dimension of embedded x second dim is the embedded dimension of q/k/v (could be different)
-        self.query = nn.Linear(embed_dim, embed_dim)
-        self.key = nn.Linear(embed_dim, embed_dim)
-        self.value = nn.Linear(embed_dim, embed_dim)
+        self.query = nn.Linear(in_features=embed_dim, out_features=embed_dim, bias=self.bias)
+        self.key = nn.Linear(in_features=embed_dim, out_features=embed_dim, bias=self.bias)
+        self.value = nn.Linear(in_features=embed_dim, out_features=embed_dim, bias=self.bias)
 
         # fc_out as the final embedding of the attention. commonly used
         if self.out_embed:
-            self.fc_out = nn.Linear(embed_dim, embed_dim)
+            self.fc_out = nn.Linear(in_features=embed_dim, out_features=embed_dim, bias=self.bias)
 
     def forward(self, x):
 

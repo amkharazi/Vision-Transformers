@@ -9,17 +9,23 @@ from Tensorized_Layers.TCL import TCL
 # from Tensorized_Layers.TRL import TRL
 
 class PatchEmbedding(nn.Module):
-    def __init__(self,input_size, patch_size, in_channels, embed_dim, device):
+    def __init__(self, input_size, patch_size, embed_dim, bias = True, device = 'cuda', ignore_modes = (0,1,2)):
         super(PatchEmbedding, self).__init__()
+        self.input_size = input_size
         self.patch_size = patch_size
-        self.tcl_input_size =  (input_size[0], input_size[1], input_size[2],
-                                patch_size, patch_size, in_channels) # patched input image size
+        self.embed_dim = embed_dim
+        self.bias = bias
+        self.device = device
+        self.ignore_modes = ignore_modes
+
+        self.tcl_input_size =  (self.input_size[0], self.input_size[2]//self.patch_size, self.input_size[3]//self.patch_size,
+                                self.patch_size, self.patch_size, self.input_size[1]) # patched input image size
                                 
         self.tcl = TCL(input_size=self.tcl_input_size,
-                        rank=embed_dim,
-                        ignore_modes=(0,1,2),
-                        bias=True, 
-                        device=device)
+                        rank=self.embed_dim,
+                        ignore_modes=self.ignore_modes,
+                        bias=self.bias, 
+                        device=self.device)
 
     def forward(self, x):
         x = rearrange(x, 
