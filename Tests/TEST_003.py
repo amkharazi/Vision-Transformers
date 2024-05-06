@@ -63,7 +63,9 @@ if __name__ == '__main__':
     # Set up the vit model
 
     model = vit_b_16().to(device)
-    
+    model.heads = nn.Sequential(
+                    nn.Linear(768,200),
+                    )
     # Load pretrained from Tests
     
     

@@ -63,7 +63,7 @@ if __name__ == '__main__':
     # Set up the vit model
     model = VisionTransformer(input_size=(64,3,224,224),
                 patch_size=16,
-                num_classes=1000,
+                num_classes=200,
                 embed_dim=(16,16,3),
                 num_heads=(2,2,3),
                 num_layers=12,
