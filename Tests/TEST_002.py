@@ -1,11 +1,7 @@
 # Check Test Plan for more details 
-# Test ResNet50 model on MNIST dataset
-# No change to classifier - Basic Model
-# Optimizer Adam - Default
-# No Scheduler
-# MNIST dataset -> (3, 192, 192) 
-# Pretrained
-# Trasfer Learning
+# Test vit-tensorized model on Tiny-Imagenet-200  dataset
+# Optimizer Adam
+# Tiny-Imagenet-200 dataset -> (3, 224, 224) 
 ########################################################
 
 # Add all .py files to path
@@ -14,10 +10,9 @@ sys.path.append('..')
 
 # Import Libraries
 from Utils.Accuracy_measures import topk_accuracy
-from Utils.Mnist_loader import get_mnist_dataloaders
-from Utils.num_parameter import count_parameters
-from Models.Resnet50 import Resnet50
-
+from Utils.TinyImageNet_loader import get_tinyimagenet_dataloaders
+from Utils.Num_parameter import count_parameters
+from Models.vit_tensorized import VisionTransformer
 
 import torchvision.transforms as transforms
 from torch import nn
@@ -36,43 +31,56 @@ if __name__ == '__main__':
     print(f'Device is set to : {device}')
 
     # Set up the transforms and train/test loaders
-    image_size = 192
+    image_size = 224
 
-    mnist_transform_train = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),
+    tiny_transform_train = transforms.Compose([
             transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, padding=2),
+            transforms.Resize((image_size, image_size)), 
+            transforms.RandomCrop(image_size, padding=5),
+            transforms.RandomRotation(10),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+    tiny_transform_val = transforms.Compose([
             transforms.Resize((image_size, image_size)), 
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-
-    mnist_transform_test = transforms.Compose([
+    tiny_transform_test = transforms.Compose([
             transforms.Resize((image_size, image_size)), 
-            transforms.Grayscale(num_output_channels=3), 
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
 
-
-    train_loader, test_loader = get_mnist_dataloaders(
-                                        data_dir = '../datasets',
-                                        batch_size = 64,
-                                        image_size = 192,
-                                        transform_train = mnist_transform_train ,
-                                        transform_test = mnist_transform_test)
-    # Set up the new classifier 
     
-    # Set up the model, optimizer and criterion
-    model = Resnet50(pretrained=True,
-                          weights_path='../weights/resnet50_weights.pth',
-                          input_shape=(192,192),
-                          num_classes=10,
-                          avg_pool=False,
-                          new_classifier=None).to(device)
+    train_loader, test_loader, _ = get_tinyimagenet_dataloaders(
+                                                        data_dir = '../datasets',
+                                                        transform_train=tiny_transform_train,
+                                                        transform_val=tiny_transform_val,
+                                                        transform_test=tiny_transform_test,
+                                                        batch_size=64,
+                                                        image_size=224)
+    # Set up the vit model
+    model = VisionTransformer(input_size=(64,3,224,224),
+                patch_size=16,
+                num_classes=1000,
+                embed_dim=(16,16,3),
+                num_heads=(2,2,3),
+                num_layers=12,
+                mlp_dim=(16,16,4),
+                dropout=0.1,
+                bias=True,
+                out_embed=True,
+                device=device,
+                ignore_modes=(0,1,2),
+                Tensorized_mlp=True).to(device)
+
+    
+    # Load pretrained from Tests
+    
     
     num_parameters = count_parameters(model)
-    classifier_parameters = count_parameters(model.fc)
+    classifier_parameters = count_parameters(model.classifier)
     print(f'This Model has {num_parameters} parameters')
     print(f'This Model has {classifier_parameters} classifier parameters')
 
@@ -141,7 +149,7 @@ if __name__ == '__main__':
         return report_test
     
     # Set up the directories to save the results
-    TEST_ID = 'Test_ID01'
+    TEST_ID = 'Test_ID002'
     result_dir = os.path.join('../results', TEST_ID)
     result_subdir = os.path.join(result_dir, 'accuracy_stats')
     model_subdir = os.path.join(result_dir, 'model_stats')
@@ -151,46 +159,16 @@ if __name__ == '__main__':
     
     with open(os.path.join(result_dir, 'model_stats', 'model_info.txt'), 'a') as f:
         f.write(f'total number of parameters:\n{num_parameters}\ntotal number of classifier parameters:\n{classifier_parameters}')
-    
-    # Freeze Convolutional Layers
-    layer = 0
-    for child in model.children():
-        layer+=1
-        if layer < 10:
-            for param in child.parameters():
-                param.requires_grad = False
-    
-    # Train and Test The Model - Frozen Layers
-    n_epoch = 30
+
+    # Train from Scratch
+    n_epoch = 100
     print(f'Training for {len(range(n_epoch))} epochs\n')
-    for epoch in range(1,n_epoch+1):
+    for epoch in range(0+1,n_epoch+1):
         report_train = train_epoch(train_loader, epoch)
         report_test = test_epoch(test_loader, epoch)
     
         report = report_train + '\n' + report_test + '\n\n'
         if epoch % 10 == 0:
-            model_path = os.path.join(result_dir, 'model_stats', f'Model_epoch_{epoch}.pth')
-            torch.save(model.state_dict(), model_path)
-        with open(os.path.join(result_dir, 'accuracy_stats', 'report.txt'), 'a') as f:
-            f.write(report)
-            
-    # Unfreeze all layers
-    layer = 0
-    for child in model.children():
-        layer+=1
-        if layer < 10:
-            for param in child.parameters():
-                param.requires_grad = True
-                
-    # Train and Test The Model - Unfrozen Layers - comment if not required
-    n_epoch_additional = 5
-    print(f'Training for Additional {len(range(n_epoch_additional))} epochs\n')
-    for epoch in range(n_epoch+1,n_epoch+n_epoch_additional+1):
-        report_train = train_epoch(train_loader, epoch)
-        report_test = test_epoch(test_loader, epoch)
-    
-        report = report_train + '\n' + report_test + '\n\n'
-        if epoch % 5 == 0:
             model_path = os.path.join(result_dir, 'model_stats', f'Model_epoch_{epoch}.pth')
             torch.save(model.state_dict(), model_path)
         with open(os.path.join(result_dir, 'accuracy_stats', 'report.txt'), 'a') as f:
