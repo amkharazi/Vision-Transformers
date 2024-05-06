@@ -80,11 +80,7 @@ if __name__ == '__main__':
     
     
     num_parameters = count_parameters(model)
-    classifier_parameters = count_parameters(model.classifier)
     print(f'This Model has {num_parameters} parameters')
-    print(f'This Model has {classifier_parameters} classifier parameters')
-
-    
     
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters())
@@ -158,7 +154,7 @@ if __name__ == '__main__':
     os.makedirs(model_subdir, exist_ok=True)
     
     with open(os.path.join(result_dir, 'model_stats', 'model_info.txt'), 'a') as f:
-        f.write(f'total number of parameters:\n{num_parameters}\ntotal number of classifier parameters:\n{classifier_parameters}')
+        f.write(f'total number of parameters:\n{num_parameters}')
 
     # Train from Scratch
     n_epoch = 100
