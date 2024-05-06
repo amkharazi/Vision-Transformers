@@ -1,6 +1,9 @@
 
 import torch
 import torch.nn as nn
+from torch.nn import init
+
+import math
 
 # torch.autograd.set_detect_anomaly(True)
 
@@ -75,7 +78,9 @@ class TCL(nn.Module):
         formula+=extend_str+out_str  
             
         self.out_formula = formula
-        # print(formula)        
+        # print(formula) 
+
+        self.init_param() # initialize parameters       
         
     def forward(self, x):
         operands = [x]
@@ -88,3 +93,9 @@ class TCL(nn.Module):
             out += self.b
         return out # You may rearrange your out tensor to your desired shapes 
     
+    def init_param(self): # initialization methods by tensorly
+        for i in range(len(self.rank)):
+            init.kaiming_uniform_(getattr(self, f'u{i}'), a = math.sqrt(5))
+        if self.bias:
+            bound = 1 / math.sqrt(self.input_size[0])
+            init.uniform_(self.b, -bound, bound)
