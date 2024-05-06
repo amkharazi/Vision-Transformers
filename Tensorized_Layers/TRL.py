@@ -70,8 +70,10 @@ class TRL(nn.Module):
         core_str = formula[:len(formula)-1]
                 
         for l in range(len(self.rank)):
-            formula+=alphabet[index]
+            # change these two lines positions if it doesnt work 
+            # need further investigation
             formula+=core_str[l]
+            formula+=alphabet[index]
             w_str+=alphabet[index]
             index+=1
             if l < len(self.rank) - 1:
