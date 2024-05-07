@@ -38,7 +38,7 @@ if __name__ == '__main__':
     batch_size = 32
 
     # Set up the transforms and train/test loaders
-    image_size = 224
+    image_size = 64
 
     tiny_transform_train = transforms.Compose([
             transforms.RandomHorizontalFlip(),
