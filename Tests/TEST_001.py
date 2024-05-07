@@ -39,7 +39,7 @@ if __name__ == '__main__':
     label_smooth = 0.1
     n_epoch = 100
     true_batch_size = 128
-    batch_size = 64
+    batch_size = 32
     update_freq = true_batch_size // batch_size
     magnitude = 9
 
