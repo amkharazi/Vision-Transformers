@@ -1,5 +1,5 @@
 # Check Test Plan for more details 
-# Test vit-tensorized model on Tiny-Imagenet-200  dataset
+# Test vit-base model on Tiny-Imagenet-200  dataset
 # Optimizer Adam
 # Tiny-Imagenet-200 dataset -> (3, 224, 224) 
 ########################################################
@@ -12,7 +12,7 @@ sys.path.append('..')
 from Utils.Accuracy_measures import topk_accuracy
 from Utils.TinyImageNet_loader import get_tinyimagenet_dataloaders
 from Utils.Num_parameter import count_parameters
-from torchvision.models import vit_b_16
+from Models.vit_base import VisionTransformer
 
 import torchvision.transforms as transforms
 from torch import nn
@@ -22,13 +22,13 @@ import time
 import torch
 import os
 
-
 if __name__ == '__main__':
     
     # Setup the device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # device = 'cpu'
     print(f'Device is set to : {device}')
+
 
     lr = 3e-5
     wd = 0.03
@@ -66,12 +66,21 @@ if __name__ == '__main__':
                                                         batch_size=batch_size,
                                                         image_size=image_size)
     # Set up the vit model
+    model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
+                patch_size=16,
+                num_classes=200,
+                embed_dim=16*16*3,
+                num_heads=12,
+                num_layers=12,
+                mlp_dim=16*16*12,
+                dropout=0.1,
+                bias=True,
+                out_embed=True,
+                device=device,
+                ignore_modes=None,
+                Tensorized_mlp=False).to(device)
 
-    model = vit_b_16()
-    model.heads = nn.Sequential(
-                    nn.Linear(768,200),
-                    )
-    mode = model.to(device)
+    
     # Load pretrained from Tests
     
     
@@ -79,8 +88,10 @@ if __name__ == '__main__':
     print(f'This Model has {num_parameters} parameters')
     
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay = wd)
-    
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
+
+    # scheduler
+
     # Define train and test functions (use examples)
     def train_epoch(loader, epoch):
         model.train()
@@ -104,7 +115,8 @@ if __name__ == '__main__':
             for k in accuracies:
                 correct[k] += accuracies[k]['correct']
             print(f'batch{i} done!')
-
+        
+        
         elapsed_time = time.time() - start_time
         top1_acc, top2_acc, top3_acc, top4_acc, top5_acc = [(correct[k]/len(loader.dataset)) for k in correct]
         avg_loss = running_loss / len(loader.dataset)
@@ -142,7 +154,7 @@ if __name__ == '__main__':
         return report_test
     
     # Set up the directories to save the results
-    TEST_ID = 'Test_ID003'
+    TEST_ID = 'Test_ID001'
     result_dir = os.path.join('../results', TEST_ID)
     result_subdir = os.path.join(result_dir, 'accuracy_stats')
     model_subdir = os.path.join(result_dir, 'model_stats')
@@ -161,7 +173,7 @@ if __name__ == '__main__':
         report_test = test_epoch(test_loader, epoch)
     
         report = report_train + '\n' + report_test + '\n\n'
-        if epoch % 25 == 0:
+        if epoch % 10 == 0:
             model_path = os.path.join(result_dir, 'model_stats', f'Model_epoch_{epoch}.pth')
             torch.save(model.state_dict(), model_path)
         with open(os.path.join(result_dir, 'accuracy_stats', 'report.txt'), 'a') as f:

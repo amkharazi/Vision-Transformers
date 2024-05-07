@@ -30,7 +30,7 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
-    lr = 1e-2
+    lr = 3e-5
     wd = 0.03
     n_epoch = 5
     batch_size = 64
