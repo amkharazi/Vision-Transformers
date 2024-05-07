@@ -22,6 +22,8 @@ import time
 import torch
 import os
 
+from torch.optim.lr_scheduler import StepLR
+
 if __name__ == '__main__':
     
     # Setup the device
@@ -31,9 +33,9 @@ if __name__ == '__main__':
 
 
     lr = 3e-5
-    wd = 0.03
+    gamma = 0.7
     n_epoch = 5
-    batch_size = 32
+    batch_size = 64
 
     # Set up the transforms and train/test loaders
     image_size = 224
@@ -88,9 +90,10 @@ if __name__ == '__main__':
     print(f'This Model has {num_parameters} parameters')
     
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
     # scheduler
+    scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
 
     # Define train and test functions (use examples)
     def train_epoch(loader, epoch):
@@ -116,6 +119,10 @@ if __name__ == '__main__':
                 correct[k] += accuracies[k]['correct']
             print(f'batch{i} done!')
         
+        
+        # scheduler
+        scheduler.step()
+        # scheduler
         
         elapsed_time = time.time() - start_time
         top1_acc, top2_acc, top3_acc, top4_acc, top5_acc = [(correct[k]/len(loader.dataset)) for k in correct]
