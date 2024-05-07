@@ -30,6 +30,11 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
+    lr = 1e-2
+    wd = 0.03
+    n_epoch = 5
+    batch_size = 64
+
     # Set up the transforms and train/test loaders
     image_size = 224
 
@@ -58,14 +63,15 @@ if __name__ == '__main__':
                                                         transform_train=tiny_transform_train,
                                                         transform_val=tiny_transform_val,
                                                         transform_test=tiny_transform_test,
-                                                        batch_size=64,
-                                                        image_size=224)
+                                                        batch_size=batch_size,
+                                                        image_size=image_size)
     # Set up the vit model
 
-    model = vit_b_16().to(device)
+    model = vit_b_16()
     model.heads = nn.Sequential(
                     nn.Linear(768,200),
                     )
+    mode = model.to(device)
     # Load pretrained from Tests
     
     
@@ -73,7 +79,7 @@ if __name__ == '__main__':
     print(f'This Model has {num_parameters} parameters')
     
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay = wd)
     
     # Define train and test functions (use examples)
     def train_epoch(loader, epoch):
@@ -83,7 +89,7 @@ if __name__ == '__main__':
         running_loss = 0.0
         correct = {1:0.0, 2:0.0, 3:0.0, 4:0.0, 5:0.0} # set the initial correct count for top1-to-top5 accuracy
 
-        for _, (inputs, targets) in enumerate(loader):
+        for i, (inputs, targets) in enumerate(loader):
             inputs, targets = inputs.to(device), targets.to(device)
         
             optimizer.zero_grad()
@@ -97,6 +103,7 @@ if __name__ == '__main__':
             accuracies = topk_accuracy(outputs, targets, topk=(1, 2, 3, 4, 5))
             for k in accuracies:
                 correct[k] += accuracies[k]['correct']
+            print(f'batch{i} done!')
 
         elapsed_time = time.time() - start_time
         top1_acc, top2_acc, top3_acc, top4_acc, top5_acc = [(correct[k]/len(loader.dataset)) for k in correct]
@@ -147,14 +154,14 @@ if __name__ == '__main__':
         f.write(f'total number of parameters:\n{num_parameters}')
 
     # Train from Scratch
-    n_epoch = 100
+    # n_epoch = 100
     print(f'Training for {len(range(n_epoch))} epochs\n')
     for epoch in range(0+1,n_epoch+1):
         report_train = train_epoch(train_loader, epoch)
         report_test = test_epoch(test_loader, epoch)
     
         report = report_train + '\n' + report_test + '\n\n'
-        if epoch % 10 == 0:
+        if epoch % 25 == 0:
             model_path = os.path.join(result_dir, 'model_stats', f'Model_epoch_{epoch}.pth')
             torch.save(model.state_dict(), model_path)
         with open(os.path.join(result_dir, 'accuracy_stats', 'report.txt'), 'a') as f:

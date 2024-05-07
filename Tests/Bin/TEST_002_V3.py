@@ -1,6 +1,6 @@
 # Check Test Plan for more details 
 # Test vit-tensorized model on Tiny-Imagenet-200  dataset
-# Optimizer Adam
+# Optimizer AdamW
 # Tiny-Imagenet-200 dataset -> (3, 224, 224) 
 ########################################################
 
@@ -19,7 +19,9 @@ from torch import nn
 from torch import optim
 
 import time
+from math import ceil
 import torch
+from torchvision.transforms.functional import InterpolationMode
 import os
 
 
@@ -30,29 +32,39 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
-    lr = 1e-2
-    wd = 0.03
-    n_epoch = 5
-    batch_size = 64
+    lr = 1e-3
+    wd = 0.05
+    # gamma = 0.7
+    label_smooth = 0.1
+    n_epoch = 100
+    true_batch_size = 128
+    batch_size = 32
+    update_freq = true_batch_size // batch_size
+    magnitude = 9
+
 
     # Set up the transforms and train/test loaders
     image_size = 224
 
     tiny_transform_train = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.Resize((image_size, image_size)), 
-            transforms.RandomCrop(image_size, padding=5),
-            transforms.RandomRotation(10),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.Resize((image_size, image_size)), 
+            # transforms.RandomCrop(image_size, padding=5),
+            # transforms.RandomRotation(10),
+            transforms.Resize(image_size, interpolation=InterpolationMode.BICUBIC),
+            transforms.RandAugment(num_ops=2,magnitude=magnitude),  
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
     tiny_transform_val = transforms.Compose([
-            transforms.Resize((image_size, image_size)), 
+            transforms.Resize(image_size, interpolation=InterpolationMode.BICUBIC),
+            # transforms.Resize((image_size, image_size)), 
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
     tiny_transform_test = transforms.Compose([
-            transforms.Resize((image_size, image_size)), 
+            transforms.Resize(image_size, interpolation=InterpolationMode.BICUBIC),
+            # transforms.Resize((image_size, image_size)), 
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
@@ -87,10 +99,11 @@ if __name__ == '__main__':
     num_parameters = count_parameters(model)
     print(f'This Model has {num_parameters} parameters')
     
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
+    criterion = nn.CrossEntropyLoss(label_smoothing=label_smooth)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=wd)
     
     # scheduler
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=ceil(len(train_loader)/update_freq)*n_epoch)
     
     # Define train and test functions (use examples)
     def train_epoch(loader, epoch):
@@ -105,6 +118,12 @@ if __name__ == '__main__':
             inputs, targets = inputs.to(device), targets.to(device)
         
             optimizer.zero_grad()
+            update = True if (i+1) % update_freq == 0 or i + 1 == len(train_loader) else False
+            if update:
+                # for param in model.parameters():
+                #     if param.grad != None:
+                #         param.grad = None
+                scheduler.step()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
         
