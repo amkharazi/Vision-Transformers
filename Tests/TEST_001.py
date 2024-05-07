@@ -33,7 +33,7 @@ if __name__ == '__main__':
     lr = 3e-5
     wd = 0.03
     n_epoch = 5
-    batch_size = 64
+    batch_size = 32
 
     # Set up the transforms and train/test loaders
     image_size = 224
