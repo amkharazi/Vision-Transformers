@@ -1,7 +1,7 @@
 # Check Test Plan for more details 
-# Test vit-Large model on Tiny-Imagenet-200  dataset
-# Optimizer AdamW
-# Tiny-Imagenet-200 dataset -> (3, 384, 384) 
+# Test vit-base model on Tiny-Imagenet-200  dataset
+# Optimizer Adam
+# Tiny-Imagenet-200 dataset -> (3, 224, 224) 
 ########################################################
 
 # Add all .py files to path
@@ -19,10 +19,10 @@ from torch import nn
 from torch import optim
 
 import time
-from math import ceil
 import torch
-from torchvision.transforms.functional import InterpolationMode
 import os
+
+from torch.optim.lr_scheduler import StepLR
 
 
 if __name__ == '__main__':
@@ -33,38 +33,27 @@ if __name__ == '__main__':
     print(f'Device is set to : {device}')
 
 
-    lr = 1e-3
-    wd = 0.05
-    # gamma = 0.7
-    label_smooth = 0.1
-    n_epoch = 100
-    true_batch_size = 128
-    batch_size = 64
-    update_freq = true_batch_size // batch_size
-    magnitude = 9
+    lr = 3e-5
+    gamma = 0.7
 
     # Set up the transforms and train/test loaders
-    image_size = 384
+    image_size = 224
 
     tiny_transform_train = transforms.Compose([
-            # transforms.RandomHorizontalFlip(),
-            # transforms.Resize((image_size, image_size)), 
-            # transforms.RandomCrop(image_size, padding=5),
-            # transforms.RandomRotation(10),
-            transforms.Resize(image_size, interpolation=InterpolationMode.BICUBIC),
-            transforms.RandAugment(num_ops=2,magnitude=magnitude),  
+            transforms.RandomHorizontalFlip(),
+            transforms.Resize((image_size, image_size)), 
+            transforms.RandomCrop(image_size, padding=5),
+            transforms.RandomRotation(10),
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
     tiny_transform_val = transforms.Compose([
-            transforms.Resize(image_size, interpolation=InterpolationMode.BICUBIC),
-            # transforms.Resize((image_size, image_size)), 
+            transforms.Resize((image_size, image_size)), 
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
     tiny_transform_test = transforms.Compose([
-            transforms.Resize(image_size, interpolation=InterpolationMode.BICUBIC),
-            # transforms.Resize((image_size, image_size)), 
+            transforms.Resize((image_size, image_size)), 
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
@@ -75,16 +64,16 @@ if __name__ == '__main__':
                                                         transform_train=tiny_transform_train,
                                                         transform_val=tiny_transform_val,
                                                         transform_test=tiny_transform_test,
-                                                        batch_size=batch_size,
+                                                        batch_size=64,
                                                         image_size=224)
     # Set up the vit model
-    model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
+    model = VisionTransformer(input_size=(64,3,224,224),
                 patch_size=16,
                 num_classes=200,
-                embed_dim=16*16*4,
-                num_heads=16,
-                num_layers=24,
-                mlp_dim=16*16*16,
+                embed_dim=16*16*3,
+                num_heads=12,
+                num_layers=12,
+                mlp_dim=3072,
                 dropout=0.1,
                 bias=True,
                 out_embed=True,
@@ -99,12 +88,12 @@ if __name__ == '__main__':
     num_parameters = count_parameters(model)
     print(f'This Model has {num_parameters} parameters')
     
-    criterion = nn.CrossEntropyLoss(label_smoothing=label_smooth)
-    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=wd)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
     # scheduler
-    # scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=ceil(len(train_loader)/update_freq)*n_epoch)
+    scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
+
 
     # Define train and test functions (use examples)
     def train_epoch(loader, epoch):
@@ -113,17 +102,11 @@ if __name__ == '__main__':
         start_time = time.time()
         running_loss = 0.0
         correct = {1:0.0, 2:0.0, 3:0.0, 4:0.0, 5:0.0} # set the initial correct count for top1-to-top5 accuracy
-        update = False
-        for i, (inputs, targets) in enumerate(loader):
-            inputs, targets = inputs.to(device), targets.to(device)
 
+        for _, (inputs, targets) in enumerate(loader):
+            inputs, targets = inputs.to(device), targets.to(device)
+        
             optimizer.zero_grad()
-            update = True if (i+1) % update_freq == 0 or i + 1 == len(train_loader) else False
-            if update:
-                # for param in model.parameters():
-                #     if param.grad != None:
-                #         param.grad = None
-                scheduler.step()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
         
@@ -136,7 +119,7 @@ if __name__ == '__main__':
                 correct[k] += accuracies[k]['correct']
         
         # scheduler
-        # scheduler.step()
+        scheduler.step()
         # scheduler
         
         elapsed_time = time.time() - start_time
@@ -188,14 +171,14 @@ if __name__ == '__main__':
         f.write(f'total number of parameters:\n{num_parameters}')
 
     # Train from Scratch
-    # n_epoch = 100
+    n_epoch = 100
     print(f'Training for {len(range(n_epoch))} epochs\n')
     for epoch in range(0+1,n_epoch+1):
         report_train = train_epoch(train_loader, epoch)
         report_test = test_epoch(test_loader, epoch)
     
         report = report_train + '\n' + report_test + '\n\n'
-        if epoch % 25 == 0:
+        if epoch % 10 == 0:
             model_path = os.path.join(result_dir, 'model_stats', f'Model_epoch_{epoch}.pth')
             torch.save(model.state_dict(), model_path)
         with open(os.path.join(result_dir, 'accuracy_stats', 'report.txt'), 'a') as f:
