@@ -1,5 +1,5 @@
 # Check Test Plan for more details 
-# Test vit-Large model on Tiny-Imagenet-200  dataset
+# Test vit-B model on Tiny-Imagenet-200  dataset
 # Optimizer AdamW
 # Tiny-Imagenet-200 dataset -> (3, 384, 384) 
 ########################################################
@@ -76,15 +76,15 @@ if __name__ == '__main__':
                                                         transform_val=tiny_transform_val,
                                                         transform_test=tiny_transform_test,
                                                         batch_size=batch_size,
-                                                        image_size=224)
+                                                        image_size=image_size)
     # Set up the vit model
     model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
                 patch_size=16,
                 num_classes=200,
-                embed_dim=16*16*4,
-                num_heads=16,
-                num_layers=24,
-                mlp_dim=16*16*16,
+                embed_dim=16*16*3,
+                num_heads=12,
+                num_layers=12,
+                mlp_dim=16*16*12,
                 dropout=0.1,
                 bias=True,
                 out_embed=True,
