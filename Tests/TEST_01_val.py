@@ -12,7 +12,7 @@ sys.path.append('..')
 from Utils.Accuracy_measures import topk_accuracy
 from Utils.TinyImageNet_loader import get_tinyimagenet_dataloaders
 from Utils.Num_parameter import count_parameters
-from Models.vit_tensorized import VisionTransformer
+from Models.vit_base import VisionTransformer
 
 import torchvision.transforms as transforms
 from torch import nn
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
-    TEST_ID = 'Test_ID02'
+    TEST_ID = 'Test_ID01'
     batch_size = 64
     n_epoch = 100
 
@@ -67,19 +67,22 @@ if __name__ == '__main__':
     model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
                 patch_size=12,
                 num_classes=200,
-                embed_dim=(12,12,3),
-                num_heads=(3,3,1),
+                embed_dim=12*12*3,
+                num_heads=3*3*1,
                 num_layers=12,
-                mlp_dim=(24,24,6),
+                mlp_dim=24*24*6,
                 dropout=0.1,
                 bias=True,
                 out_embed=True,
                 device=device,
-                ignore_modes=(0,1,2),
-                Tensorized_mlp=True).to(device)
+                ignore_modes=None,
+                Tensorized_mlp=False)
 
     
     # Load pretrained from Tests
+    weights_path = os.path.join('../results',TEST_ID, 'model_stats', f'Model_epoch_{n_epoch}.pth')
+    model.load_state_dict(torch.load(weights_path))
+    model = model.to(device)
     
     
     num_parameters = count_parameters(model)
@@ -112,7 +115,7 @@ if __name__ == '__main__':
             accuracies = topk_accuracy(outputs, targets, topk=(1, 2, 3, 4, 5))
             for k in accuracies:
                 correct[k] += accuracies[k]['correct']
-            # print(f'batch{i} done!')
+            print(f'batch{i} done!')
 
         elapsed_time = time.time() - start_time
         top1_acc, top2_acc, top3_acc, top4_acc, top5_acc = [(correct[k]/len(loader.dataset)) for k in correct]
@@ -158,28 +161,27 @@ if __name__ == '__main__':
     os.makedirs(result_subdir, exist_ok=True)
     os.makedirs(model_subdir, exist_ok=True)
     
-    with open(os.path.join(result_dir, 'model_stats', 'model_info.txt'), 'a') as f:
-        f.write(f'total number of parameters:\n{num_parameters}')
+    # with open(os.path.join(result_dir, 'model_stats', 'model_info.txt'), 'a') as f:
+    #     f.write(f'total number of parameters:\n{num_parameters}')
 
     # Train from Scratch - Just Train
-    print(f'Training for {len(range(n_epoch))} epochs\n')
-    for epoch in range(0+1,n_epoch+1):
-        report_train = train_epoch(train_loader, epoch)
-        # report_test = test_epoch(test_loader, epoch)
+    # print(f'Training for {len(range(n_epoch))} epochs\n')
+    # for epoch in range(0+1,n_epoch+1):
+    #     report_train = train_epoch(train_loader, epoch)
+    #     # report_test = test_epoch(test_loader, epoch)
     
-        report = report_train + '\n' #+ report_test + '\n\n'
-        if epoch % 25 == 0:
-            model_path = os.path.join(result_dir, 'model_stats', f'Model_epoch_{epoch}.pth')
-            torch.save(model.state_dict(), model_path)
-        with open(os.path.join(result_dir, 'accuracy_stats', 'report_train.txt'), 'a') as f:
-            f.write(report)
+    #     report = report_train + '\n' #+ report_test + '\n\n'
+    #     if epoch % 25 == 0:
+    #         model_path = os.path.join(result_dir, 'model_stats', f'Model_epoch_{epoch}.pth')
+    #         torch.save(model.state_dict(), model_path)
+    #     with open(os.path.join(result_dir, 'accuracy_stats', 'report_train.txt'), 'a') as f:
+    #         f.write(report)
             
-    # print(f'Testing\n')
-    # report_test = test_epoch(test_loader, epoch)
-    # report = report_test + '\n'
-    # with open(os.path.join(result_dir, 'accuracy_stats', 'report_test.txt'), 'a') as f:
-    #     f.write(report)  
-    
+    print(f'Testing\n')
+    report_test = test_epoch(test_loader, n_epoch)
+    report = report_test + '\n'
+    with open(os.path.join(result_dir, 'accuracy_stats', 'report_val.txt'), 'a') as f:
+        f.write(report)       
 
     
             

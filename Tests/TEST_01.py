@@ -12,7 +12,7 @@ sys.path.append('..')
 from Utils.Accuracy_measures import topk_accuracy
 from Utils.TinyImageNet_loader import get_tinyimagenet_dataloaders
 from Utils.Num_parameter import count_parameters
-from Models.vit_tensorized import VisionTransformer
+from Models.vit_base import VisionTransformer
 
 import torchvision.transforms as transforms
 from torch import nn
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
-    TEST_ID = 'Test_ID02'
+    TEST_ID = 'Test_ID01'
     batch_size = 64
     n_epoch = 100
 
@@ -67,17 +67,17 @@ if __name__ == '__main__':
     model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
                 patch_size=12,
                 num_classes=200,
-                embed_dim=(12,12,3),
-                num_heads=(3,3,1),
+                embed_dim=12*12*3,
+                num_heads=3*3*1,
                 num_layers=12,
-                mlp_dim=(24,24,6),
+                mlp_dim=24*24*6,
                 dropout=0.1,
                 bias=True,
                 out_embed=True,
                 device=device,
-                ignore_modes=(0,1,2),
-                Tensorized_mlp=True).to(device)
-
+                ignore_modes=None,
+                Tensorized_mlp=False).to(device)
+    
     
     # Load pretrained from Tests
     
@@ -178,8 +178,7 @@ if __name__ == '__main__':
     # report_test = test_epoch(test_loader, epoch)
     # report = report_test + '\n'
     # with open(os.path.join(result_dir, 'accuracy_stats', 'report_test.txt'), 'a') as f:
-    #     f.write(report)  
-    
+    #     f.write(report)       
 
     
             
