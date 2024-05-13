@@ -175,11 +175,11 @@ if __name__ == '__main__':
         with open(os.path.join(result_dir, 'accuracy_stats', 'report_train.txt'), 'a') as f:
             f.write(report)
             
-    print(f'Testing\n')
-    report_test = test_epoch(test_loader, epoch)
-    report = report_test + '\n'
-    with open(os.path.join(result_dir, 'accuracy_stats', 'report_test.txt'), 'a') as f:
-        f.write(report)       
+    # print(f'Testing\n')
+    # report_test = test_epoch(test_loader, epoch)
+    # report = report_test + '\n'
+    # with open(os.path.join(result_dir, 'accuracy_stats', 'report_test.txt'), 'a') as f:
+    #     f.write(report)       
 
     
             
