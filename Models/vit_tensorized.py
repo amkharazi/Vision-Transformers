@@ -81,22 +81,23 @@ class VisionTransformer(nn.Module):
         patches += self.pos_embedding
 
         ## cls token addon        
-        tensor_cls = torch.zeros((patches.shape[0],
+        tensor_cls_token = torch.zeros((patches.shape[0],
                                   1,
                                   patches.shape[2],
                                   patches.shape[3],
                                   patches.shape[4],
                                   patches.shape[5])).to(self.device)
 
-        tensor_cls[:, 0, 0 ,:,:,:] = self.cls_token
+        tensor_cls_token[:, 0, 0 ,:,:,:] = self.cls_token
 
-        x = torch.cat([tensor_cls, patches ], dim = 1 ).to(self.device)
+        x = torch.cat([tensor_cls_token, patches ], dim = 1 ).to(self.device)
         
         for transformer_block in self.transformer:
             x = transformer_block(x)
 
         x = self.norm(x)
         cls_token_final = x[:, 0, 0, :,:,:]
+        
         # pass to trl
         # cls_token_final_vec = cls_token_final.flatten().reshape(x.shape[0],-1)
         output = self.classifier(cls_token_final)
