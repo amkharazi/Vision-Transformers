@@ -30,7 +30,7 @@ if __name__ == '__main__':
     print(f'Device is set to : {device}')
 
     TEST_ID = 'Test_ID01'
-    batch_size = 64
+    batch_size = 16
     n_epoch = 100
 
     # Set up the transforms and train/test loaders
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     
     # Load pretrained from Tests
     weights_path = os.path.join('../results',TEST_ID, 'model_stats', f'Model_epoch_{n_epoch}.pth')
-    model.load_state_dict(torch.load(weights_path))
+    print(model.load_state_dict(torch.load(weights_path)))
     model = model.to(device)
     
     
