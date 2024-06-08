@@ -1,4 +1,4 @@
 /Ignored/
 /datasets/
 **/__pycache__/
-/results/
+results/**/model_stats/*.pth

@@ -1,7 +1,7 @@
 import os
 from PIL import Image
 from torchvision import transforms
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, random_split, ConcatDataset
 import torchvision.datasets as datasets
 
 
@@ -76,7 +76,7 @@ class val_dataset(Dataset):
         return labels
 
 
-def get_tinyimagenet_dataloaders(data_dir='../datasets', transform_train=None, transform_val=None, transform_test=None, batch_size=64, image_size=192):
+def get_tinyimagenet_dataloaders(data_dir='../datasets', transform_train=None, transform_val=None, transform_test=None, batch_size=64, image_size=192, train_size= 'default'):
     if transform_train is None:
         transform_train = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -98,10 +98,15 @@ def get_tinyimagenet_dataloaders(data_dir='../datasets', transform_train=None, t
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
 
-
     dataset_train = datasets.ImageFolder(root=os.path.join(data_dir,'tiny-imagenet-200/train'), transform=transform_train)
     dataset_val = val_dataset(root_dir=data_dir, transform=transform_val)
     dataset_test = test_dataset(root_dir=data_dir, transform=transform_test)
+    
+    if train_size is not  'default':
+        total_train = len(dataset_train)
+        temp_val_size = total_train- train_size
+        dataset_train, dataset_temp_val = random_split(dataset_train, [train_size, temp_val_size])
+        dataset_val = ConcatDataset([dataset_temp_val, dataset_val])
 
     train_loader = DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(dataset_val, batch_size=batch_size, shuffle=False)
