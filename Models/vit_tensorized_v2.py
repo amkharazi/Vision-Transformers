@@ -36,15 +36,7 @@ class VisionTransformer(nn.Module):
                                                 device=device,
                                                 ignore_modes= ignore_modes)
 
-        self.pos_embedding = nn.Parameter(
-            torch.randn(1,
-                        (input_size[2] // patch_size),
-                        (input_size[2] // patch_size),
-                        embed_dim[0],
-                        embed_dim[1],
-                        embed_dim[2],
-                        device = device
-                        ), requires_grad=True)
+        # Add CLS Token
 
         self.cls_token = nn.Parameter(
             torch.randn(1,
@@ -55,6 +47,19 @@ class VisionTransformer(nn.Module):
                         embed_dim[2], 
                         device=device
                         ), requires_grad=True)
+        
+        
+        # Add Positional Embedding
+
+        self.pos_embedding = nn.Parameter(
+            torch.randn(1,
+                        (input_size[2] // patch_size) + 1,
+                        (input_size[2] // patch_size),
+                        embed_dim[0],
+                        embed_dim[1],
+                        embed_dim[2],
+                        device = device
+                        ), requires_grad=True)
 
 
         tcl_input_size = (input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size,
@@ -62,7 +67,7 @@ class VisionTransformer(nn.Module):
         MLP = nn.Sequential(
                 TCL(input_size=tcl_input_size, rank=mlp_dim, ignore_modes=ignore_modes, bias=bias, device=device),
                 nn.GELU(),
-                TCL(input_size=mlp_dim, rank=embed_dim, ignore_modes=ignore_modes, bias=bias, device=device),
+                TCL(input_size=(input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size) + mlp_dim, rank=embed_dim, ignore_modes=ignore_modes, bias=bias, device=device),
                 nn.Dropout(dropout),
             )
         norm = nn.LayerNorm(embed_dim)
@@ -90,8 +95,6 @@ class VisionTransformer(nn.Module):
     def forward(self, x):
         patches = self.patch_embedding(x)
 
-        patches += self.pos_embedding
-
         ## cls token addon        
         tensor_cls_token = torch.zeros((patches.shape[0],
                                   1,
@@ -103,6 +106,8 @@ class VisionTransformer(nn.Module):
         tensor_cls_token[:, 0, 0 ,:,:,:] = self.cls_token
 
         x = torch.cat([tensor_cls_token, patches ], dim = 1 ).to(self.device)
+
+        x += self.pos_embedding
         
         for transformer_block in self.transformer:
             x = transformer_block(x)
