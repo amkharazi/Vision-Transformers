@@ -1,7 +1,7 @@
 # Check Test Plan for more details 
 # Test vit-tensorized model on Tiny-Imagenet-200  dataset
 # Optimizer Adam
-# Tiny-Imagenet-200 dataset -> (3, 224, 224) 
+# Tiny-Imagenet-200 dataset -> (3, 192, 192) 
 ########################################################
 
 # Add all .py files to path
@@ -11,7 +11,7 @@ sys.path.append('..')
 # Import Libraries
 from Utils.Accuracy_measures import topk_accuracy
 from Utils.TinyImageNet_loader import get_tinyimagenet_dataloaders
-from Models.vit_original import VisionTransformer
+from Models.vit_tensorized_v2 import VisionTransformer
 
 import torchvision.transforms as transforms
 from torch import nn
@@ -27,12 +27,12 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
-    TEST_ID = 'Test_ID001'
+    TEST_ID = 'Test_ID026'
     batch_size = 16
     n_epoch = 100
 
     # Set up the transforms and train/test loaders
-    image_size = 224
+    image_size = 192
 
     tiny_transform_train = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -63,19 +63,19 @@ if __name__ == '__main__':
                                                         image_size=image_size)
     # Set up the vit model
     model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
-                patch_size=16,
+                patch_size=12,
                 num_classes=200,
-                embed_dim=16*16*3,
-                num_heads=2*2*3,
+                embed_dim=(12,12,3),
+                num_heads=(3,3,1),
                 num_layers=12,
-                mlp_dim=32*32*3,
+                mlp_dim=(24,24,6),
                 dropout=0.1,
                 bias=True,
                 out_embed=True,
                 device=device,
-                ignore_modes=None,
-                Tensorized_mlp=False).to(device)
-    
+                ignore_modes=(0,1,2),
+                Tensorized_mlp=True).to(device)
+
     criterion = nn.CrossEntropyLoss()
 
     def test_epoch(loader, epoch):

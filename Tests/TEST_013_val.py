@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
-    TEST_ID = 'Test_ID001'
+    TEST_ID = 'Test_ID013'
     batch_size = 16
     n_epoch = 100
 
@@ -60,7 +60,8 @@ if __name__ == '__main__':
                                                         transform_val=tiny_transform_val,
                                                         transform_test=tiny_transform_test,
                                                         batch_size=batch_size,
-                                                        image_size=image_size)
+                                                        image_size=image_size, 
+                                                        train_size= 70000)
     # Set up the vit model
     model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
                 patch_size=16,
@@ -75,7 +76,7 @@ if __name__ == '__main__':
                 device=device,
                 ignore_modes=None,
                 Tensorized_mlp=False).to(device)
-    
+
     criterion = nn.CrossEntropyLoss()
 
     def test_epoch(loader, epoch):

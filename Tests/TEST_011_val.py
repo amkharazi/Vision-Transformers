@@ -1,7 +1,7 @@
 # Check Test Plan for more details 
 # Test vit-tensorized model on Tiny-Imagenet-200  dataset
 # Optimizer Adam
-# Tiny-Imagenet-200 dataset -> (3, 224, 224) 
+# Tiny-Imagenet-200 dataset -> (3, 64, 64) 
 ########################################################
 
 # Add all .py files to path
@@ -27,12 +27,12 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
-    TEST_ID = 'Test_ID001'
+    TEST_ID = 'Test_ID011'
     batch_size = 16
     n_epoch = 100
 
     # Set up the transforms and train/test loaders
-    image_size = 224
+    image_size = 64
 
     tiny_transform_train = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -63,12 +63,12 @@ if __name__ == '__main__':
                                                         image_size=image_size)
     # Set up the vit model
     model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
-                patch_size=16,
+                patch_size=4,
                 num_classes=200,
-                embed_dim=16*16*3,
-                num_heads=2*2*3,
+                embed_dim=4*4*3,
+                num_heads=1*1*1,
                 num_layers=12,
-                mlp_dim=32*32*3,
+                mlp_dim=8*8*6,
                 dropout=0.1,
                 bias=True,
                 out_embed=True,

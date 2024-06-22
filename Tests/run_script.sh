@@ -5,9 +5,9 @@
 
 # Uncomment test cases you wish to run, then run the bash file
 
-python3 TEST_001.py
+# python3 TEST_001.py
 python3 TEST_001_val.py	
-python3 TEST_002.py	
+# python3 TEST_002.py	
 python3 TEST_002_val.py
 # python3 TEST_003.py
 # python3 TEST_004.py
@@ -19,9 +19,9 @@ python3 TEST_002_val.py
 # python3 TEST_010.py
 # python3 TEST_011.py
 # python3 TEST_012.py
-python3 TEST_013.py
+# python3 TEST_013.py
 python3 TEST_013_val.py	
-python3 TEST_014.py
+# python3 TEST_014.py
 python3 TEST_014_val.py	
 # python3 TEST_015.py
 # python3 TEST_016.py
@@ -33,14 +33,14 @@ python3 TEST_014_val.py
 # python3 TEST_022.py
 # python3 TEST_023.py
 # python3 TEST_024.py
-python3 TEST_025.py
+# python3 TEST_025.py
 python3 TEST_025_val.py
 # python3 TEST_026.py
 # python3 TEST_027.py
 # python3 TEST_028.py
 # python3 TEST_029.py
 # python3 TEST_030.py
-python3 TEST_031.py
+# python3 TEST_031.py
 python3 TEST_031_val.py
 # python3 TEST_032.py
 # python3 TEST_033.py

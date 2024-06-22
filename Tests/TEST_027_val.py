@@ -1,7 +1,7 @@
 # Check Test Plan for more details 
 # Test vit-tensorized model on Tiny-Imagenet-200  dataset
 # Optimizer Adam
-# Tiny-Imagenet-200 dataset -> (3, 224, 224) 
+# Tiny-Imagenet-200 dataset -> (3, 64, 64) 
 ########################################################
 
 # Add all .py files to path
@@ -27,12 +27,12 @@ if __name__ == '__main__':
     # device = 'cpu'
     print(f'Device is set to : {device}')
 
-    TEST_ID = 'Test_ID025'
+    TEST_ID = 'Test_ID027'
     batch_size = 16
     n_epoch = 100
 
     # Set up the transforms and train/test loaders
-    image_size = 224
+    image_size = 64
 
     tiny_transform_train = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -63,19 +63,18 @@ if __name__ == '__main__':
                                                         image_size=image_size)
     # Set up the vit model
     model = VisionTransformer(input_size=(batch_size,3,image_size,image_size),
-                patch_size=16,
+                patch_size=8,
                 num_classes=200,
-                embed_dim=(16,16,3),
-                num_heads=(2,2,3),
+                embed_dim=(8,8,3),
+                num_heads=(2,2,1),
                 num_layers=12,
-                mlp_dim=(32,32,3),
+                mlp_dim=(24,24,9),
                 dropout=0.1,
                 bias=True,
                 out_embed=True,
                 device=device,
                 ignore_modes=(0,1,2),
                 Tensorized_mlp=True).to(device)
-
 
     criterion = nn.CrossEntropyLoss()
 
@@ -121,7 +120,7 @@ if __name__ == '__main__':
             weights_path = os.path.join('../results',TEST_ID, 'model_stats', f'Model_epoch_{epoch}.pth')
             print(model.load_state_dict(torch.load(weights_path)))
             model = model.to(device)
-            report_test = test_epoch(test_loader, n_epoch)
+            report_test = test_epoch(test_loader, epoch)
             report = report_test + '\n'
             with open(os.path.join(result_dir, 'accuracy_stats', 'report_val.txt'), 'a') as f:
                 f.write(report)       
