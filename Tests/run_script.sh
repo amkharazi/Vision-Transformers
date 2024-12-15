@@ -89,4 +89,9 @@
 # python3 TEST_041_val.py
 # python3 TEST_042.py
 # python3 TEST_042_val.py
-
+# python3 TEST_042.py
+# python3 TEST_042_val.py
+# python3 TEST_043.py
+# python3 TEST_043_val.py
+python3 TEST_044.py
+python3 TEST_044_val.py
