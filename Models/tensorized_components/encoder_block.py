@@ -4,11 +4,11 @@ sys.path.append('..')
 import torch.nn as nn
 from Models.tensorized_components.multihead_attention import MultiHeadAttention as MHA
 from einops import rearrange
-from Tensorized_Layers.TCL import TCL
+from Tensorized_Layers.TCL import TCL, TCL_extended
 from Tensorized_Layers.TRL import TRL
 
 class Encoder(nn.Module):
-    def __init__(self,input_size, patch_size, embed_dim, num_heads, mlp_dim, dropout=0.5, bias = True, out_embed = True, device = 'cuda', ignore_modes=(0,1,2), Tensorized_mlp = True):
+    def __init__(self,input_size, patch_size, embed_dim, num_heads, mlp_dim, dropout=0.5, bias = True, out_embed = True, device = 'cuda', ignore_modes=(0,1,2), Tensorized_mlp = True, tcl_type='normal', tcl_r = 3):
         super(Encoder, self).__init__()
         self.tensorized_mlp = Tensorized_mlp
         self.tcl_input_size = (input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size,
@@ -31,7 +31,9 @@ class Encoder(nn.Module):
                             bias=bias,
                             out_embed= out_embed,
                             device=device,
-                            ignore_modes=ignore_modes
+                            ignore_modes=ignore_modes,  
+                            tcl_type=tcl_type, 
+                            tcl_r = tcl_r
                              )
         
         if self.tensorized_mlp == False:
@@ -44,12 +46,20 @@ class Encoder(nn.Module):
             )
             self.norm2 = nn.LayerNorm(feature_dim)
         elif self.tensorized_mlp == True:
-            self.mlp = nn.Sequential(
-                TCL(input_size=self.tcl_input_size, rank=mlp_dim, ignore_modes=ignore_modes, bias=bias, device=device),
-                nn.GELU(),
-                TRL(input_size=self.trl_input_size, output=embed_dim, rank=self.trl_ranks, ignore_modes=ignore_modes, bias=bias,device=device),
-                nn.Dropout(dropout),
-            )
+            if tcl_type=='normal':
+                self.mlp = nn.Sequential(
+                    TCL(input_size=self.tcl_input_size, rank=mlp_dim, ignore_modes=ignore_modes, bias=bias, device=device),
+                    nn.GELU(),
+                    TRL(input_size=self.trl_input_size, output=embed_dim, rank=self.trl_ranks, ignore_modes=ignore_modes, bias=bias,device=device),
+                    nn.Dropout(dropout),
+                )
+            else:
+                self.mlp = nn.Sequential(
+                    TCL_extended(input_size=self.tcl_input_size, rank=mlp_dim, ignore_modes=ignore_modes, bias=bias, device=device, r=tcl_r),
+                    nn.GELU(),
+                    TRL(input_size=self.trl_input_size, output=embed_dim, rank=self.trl_ranks, ignore_modes=ignore_modes, bias=bias,device=device),
+                    nn.Dropout(dropout),
+                )
         else:
             self.mlp = self.tensorized_mlp[0]
             self.norm2 = self.tensorized_mlp[1]

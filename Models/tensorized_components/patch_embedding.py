@@ -5,11 +5,11 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 
-from Tensorized_Layers.TCL import TCL
+from Tensorized_Layers.TCL import TCL, TCL_extended
 # from Tensorized_Layers.TRL import TRL
 
 class PatchEmbedding(nn.Module):
-    def __init__(self, input_size, patch_size, embed_dim, bias = True, device = 'cuda', ignore_modes = (0,1,2)):
+    def __init__(self, input_size, patch_size, embed_dim, bias = True, device = 'cuda', ignore_modes = (0,1,2), tcl_type='normal', tcl_r = 3):
         super(PatchEmbedding, self).__init__()
         self.input_size = input_size
         self.patch_size = patch_size
@@ -20,12 +20,18 @@ class PatchEmbedding(nn.Module):
 
         self.tcl_input_size =  (self.input_size[0], self.input_size[2]//self.patch_size, self.input_size[3]//self.patch_size,
                                 self.patch_size, self.patch_size, self.input_size[1]) # patched input image size
-                                
-        self.tcl = TCL(input_size=self.tcl_input_size,
-                        rank=self.embed_dim,
-                        ignore_modes=self.ignore_modes,
-                        bias=self.bias, 
-                        device=self.device)
+        if tcl_type=='normal':                        
+            self.tcl = TCL(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device)
+        else:
+            self.tcl = TCL_extended(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device, r = tcl_r)
 
     def forward(self, x):
         x = rearrange(x, 

@@ -3,11 +3,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-from Tensorized_Layers.TCL import TCL
+from Tensorized_Layers.TCL import TCL,TCL_extended
 # from Tensorized_Layers.TRL import TRL
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self,input_size, patch_size, embed_dim, num_heads, bias = True, out_embed = True, device = 'cuda', ignore_modes = (0,1,2)):
+    def __init__(self,input_size, patch_size, embed_dim, num_heads, bias = True, out_embed = True, device = 'cuda', ignore_modes = (0,1,2), tcl_type='normal', tcl_r = 3):
         super(MultiHeadAttention, self).__init__()
         self.input_size = input_size
         self.patch_size = patch_size
@@ -31,31 +31,59 @@ class MultiHeadAttention(nn.Module):
 
 
         # first dim is the dimension of embedded x second dim is the embedded dimension of q/k/v (could be different)
-        #  Q
-        self.tcl_q = TCL(input_size=self.tcl_input_size,
-                        rank=self.embed_dim,
-                        ignore_modes=self.ignore_modes,
-                        bias=self.bias, 
-                        device=self.device)
-        # K
-        self.tcl_k = TCL(input_size=self.tcl_input_size,
-                        rank=self.embed_dim,
-                        ignore_modes=self.ignore_modes,
-                        bias=self.bias, 
-                        device=self.device)
+        
+        if tcl_type=='normal':
+            #  Q
+            self.tcl_q = TCL(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device,  r = tcl_r)
+            # K
+            self.tcl_k = TCL(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device)
 
-        # V
-        self.tcl_v = TCL(input_size=self.tcl_input_size,
-                        rank=self.embed_dim,
-                        ignore_modes=self.ignore_modes,
-                        bias=self.bias, 
-                        device=self.device)
-        if self.out_embed:
-            self.tcl_out = TCL(input_size=self.tcl_input_size,
-                        rank=self.embed_dim,
-                        ignore_modes=self.ignore_modes,
-                        bias=self.bias, 
-                        device=self.device)
+            # V
+            self.tcl_v = TCL(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device)
+            if self.out_embed:
+                self.tcl_out = TCL(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device)
+        else:
+            #  Q
+            self.tcl_q = TCL_extended(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device,  r = tcl_r)
+            # K
+            self.tcl_k = TCL_extended(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device,  r = tcl_r)
+
+            # V
+            self.tcl_v = TCL_extended(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device,  r = tcl_r)
+            if self.out_embed:
+                self.tcl_out = TCL_extended(input_size=self.tcl_input_size,
+                            rank=self.embed_dim,
+                            ignore_modes=self.ignore_modes,
+                            bias=self.bias, 
+                            device=self.device,  r = tcl_r)
 
     def forward(self, x):
         q = self.tcl_q(x)

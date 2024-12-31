@@ -6,7 +6,7 @@ import torch.nn as nn
 from Models.tensorized_components.patch_embedding import PatchEmbedding
 from Models.tensorized_components.encoder_block import Encoder
 from Tensorized_Layers.TRL import TRL
-from Tensorized_Layers.TCL import TCL
+from Tensorized_Layers.TCL import TCL, TCL_extended
 
 
 class VisionTransformer(nn.Module):
@@ -23,7 +23,9 @@ class VisionTransformer(nn.Module):
                  out_embed=True,
                  device='cuda',
                  ignore_modes = (0,1,2),
-                 Tensorized_mlp = True
+                 Tensorized_mlp = True,
+                 tcl_type = 'normal',
+                 r=3
                  ):
         super(VisionTransformer, self).__init__()
         self.device=device
@@ -34,7 +36,9 @@ class VisionTransformer(nn.Module):
                                                 embed_dim=embed_dim,
                                                 bias=bias,
                                                 device=device,
-                                                ignore_modes= ignore_modes)
+                                                ignore_modes= ignore_modes, 
+                                                tcl_type=tcl_type, 
+                                                tcl_r=r)
 
         # Add CLS Token
 
@@ -64,6 +68,7 @@ class VisionTransformer(nn.Module):
 
         tcl_input_size = (input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size,
                                 embed_dim[0], embed_dim[1], embed_dim[2]) # patched input image size
+        
         MLP = nn.Sequential(
                 TCL(input_size=tcl_input_size, rank=mlp_dim, ignore_modes=ignore_modes, bias=bias, device=device),
                 nn.GELU(),
@@ -81,7 +86,9 @@ class VisionTransformer(nn.Module):
                         dropout=dropout,
                         bias=bias,out_embed=out_embed,
                         device=device,ignore_modes=ignore_modes,
-                        Tensorized_mlp=[MLP, norm]) for _ in range(num_layers)
+                        Tensorized_mlp=[MLP, norm], 
+                        tcl_type=tcl_type, 
+                        tcl_r=r) for _ in range(num_layers)
         ])
         self.norm = nn.LayerNorm(embed_dim)
         # embed layer is the output of final mlp layer in the transformer block

@@ -98,3 +98,15 @@ class TCL(nn.Module):
         if self.bias:
             bound = 1 / math.sqrt(self.input_size[0])
             init.uniform_(self.b, -bound, bound)
+
+
+class TCL_extended(nn.Module):
+    def __init__(self, input_size, rank, ignore_modes = (0,), bias = True, device = 'cuda', r = 3):
+        super(TCL_extended, self).__init__()
+        
+        self.TCLs = nn.ModuleList([TCL(input_size, rank, ignore_modes, bias, device) for _ in range(r)])
+        
+    def forward(self, x):
+        outputs = self.TCLs(x)
+        return sum(outputs) 
+    

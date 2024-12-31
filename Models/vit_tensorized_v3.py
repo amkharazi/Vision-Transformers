@@ -6,6 +6,10 @@ import torch.nn as nn
 from Models.tensorized_components.patch_embedding import PatchEmbedding
 from Models.tensorized_components.encoder_block import Encoder
 from Tensorized_Layers.TRL import TRL
+from Tensorized_Layers.TCL import TCL, TCL_extended
+
+
+
 
 class VisionTransformer(nn.Module):
     def __init__(self,
@@ -22,7 +26,7 @@ class VisionTransformer(nn.Module):
                  device='cuda',
                  ignore_modes = (0,1,2),
                  Tensorized_mlp = True,
-                 tcl_type = 'normal',
+                 tcl_type = 'multi',
                  r=3
                  ):
         super(VisionTransformer, self).__init__()
@@ -62,9 +66,26 @@ class VisionTransformer(nn.Module):
                         embed_dim[2],
                         device = device
                         ), requires_grad=True)
-        
-        
 
+
+        tcl_input_size = (input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size,
+                                embed_dim[0], embed_dim[1], embed_dim[2]) # patched input image size
+        
+        if tcl_type='normal':
+            MLP = nn.Sequential(
+                    TCL(input_size=tcl_input_size, rank=mlp_dim, ignore_modes=ignore_modes, bias=bias, device=device),
+                    nn.GELU(),
+                    TCL(input_size=(input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size) + mlp_dim, rank=embed_dim, ignore_modes=ignore_modes, bias=bias, device=device, r = tcl_r),
+                    nn.Dropout(dropout),
+                )
+        else:
+            MLP = nn.Sequential(
+                    TCL_extended(input_size=tcl_input_size, rank=mlp_dim, ignore_modes=ignore_modes, bias=bias, device=device, r = r),
+                    nn.GELU(),
+                    TCL_extended(input_size=(input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size) + mlp_dim, rank=embed_dim, ignore_modes=ignore_modes, bias=bias, device=device, r=r),
+                    nn.Dropout(dropout),
+                )
+        norm = nn.LayerNorm(embed_dim)
 
         self.transformer = nn.ModuleList([
             Encoder(input_size=input_size,
@@ -75,7 +96,7 @@ class VisionTransformer(nn.Module):
                         dropout=dropout,
                         bias=bias,out_embed=out_embed,
                         device=device,ignore_modes=ignore_modes,
-                        Tensorized_mlp=Tensorized_mlp, 
+                        Tensorized_mlp=[MLP, norm], 
                         tcl_type=tcl_type, 
                         tcl_r=r) for _ in range(num_layers)
         ])
