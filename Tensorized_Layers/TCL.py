@@ -107,6 +107,6 @@ class TCL_extended(nn.Module):
         self.TCLs = nn.ModuleList([TCL(input_size, rank, ignore_modes, bias, device) for _ in range(r)])
         
     def forward(self, x):
-        outputs = [tcl(x) for tcl in self.TCLs]
-        return sum(outputs) 
+        # outputs = [tcl(x) for tcl in self.TCLs]
+        return sum([tcl(x) for tcl in self.TCLs]) 
     
