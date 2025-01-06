@@ -30,7 +30,7 @@ if __name__ == '__main__':
     print(f'Device is set to : {device}')
 
     TEST_ID = 'ID_002'
-    batch_size = 64
+    batch_size = 32
     n_epoch = 400
 
     # Set up the transforms and train/test loaders

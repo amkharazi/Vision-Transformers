@@ -71,7 +71,7 @@ class VisionTransformer(nn.Module):
         tcl_input_size = (input_size[0], input_size[2]//patch_size + 1, input_size[3]//patch_size,
                                 embed_dim[0], embed_dim[1], embed_dim[2]) # patched input image size
         
-        if tcl_type='normal':
+        if tcl_type=='normal':
             MLP = nn.Sequential(
                     TCL(input_size=tcl_input_size, rank=mlp_dim, ignore_modes=ignore_modes, bias=bias, device=device),
                     nn.GELU(),

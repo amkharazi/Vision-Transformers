@@ -109,7 +109,7 @@ if __name__ == '__main__':
     
     print(f'Testing ... \n')
 
-    for epoch in range(0+1,100+1):
+    for epoch in range(0+1,n_epoch+1):
         if epoch%5 == 0:
             weights_path = os.path.join('../results',TEST_ID, 'model_stats', f'Model_epoch_{epoch}.pth')
             print(model.load_state_dict(torch.load(weights_path)))
