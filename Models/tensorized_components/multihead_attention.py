@@ -38,7 +38,7 @@ class MultiHeadAttention(nn.Module):
                             rank=self.embed_dim,
                             ignore_modes=self.ignore_modes,
                             bias=self.bias, 
-                            device=self.device,  r = tcl_r)
+                            device=self.device)
             # K
             self.tcl_k = TCL(input_size=self.tcl_input_size,
                             rank=self.embed_dim,

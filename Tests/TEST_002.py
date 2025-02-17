@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     TEST_ID = 'Test_ID002'
     batch_size = 32
-    n_epoch = 400
+    n_epoch = 1
     image_size = 224
 
     # Set up the vit model
