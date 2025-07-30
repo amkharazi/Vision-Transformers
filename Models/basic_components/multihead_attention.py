@@ -5,13 +5,11 @@ import torch.nn.functional as F
 from einops import rearrange
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self,input_size, patch_size, embed_dim, num_heads, bias = True, out_embed = True, device = 'cuda', ignore_modes = None):
+    def __init__(self,input_size, patch_size, embed_dim, num_heads, bias = True, out_embed = True):
         super(MultiHeadAttention, self).__init__()
         self.input_size = input_size
         self.patch_size = patch_size
-        self.device = device
         self.bias = bias
-        self.ignore_modes = ignore_modes
 
         self.embed_dim = embed_dim
         self.num_heads = num_heads
