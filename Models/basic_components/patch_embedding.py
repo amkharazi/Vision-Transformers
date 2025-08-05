@@ -14,10 +14,9 @@ class PatchEmbedding(nn.Module):
                                      bias=self.bias)
     def forward(self, x):
         B, C, H, W = x.shape
-        assert H % self.patch_size == 0 and W % self.patch_size == 0, \
-            f"Input height and width must be divisible by patch_size={self.patch_size}"
+        assert H % self.patch_size == 0 and W % self.patch_size == 0, f"Input height and width must be divisible by patch_size={self.patch_size}"
         x = rearrange(x,
-                        'b c (p1 h) (p2 w) -> b (p1 p2) (h w c)',
+                        'b c (p1 h) (p2 w) -> b (p1 p2) (c h w)',
                         h=self.patch_size, w=self.patch_size)
         x = self.projection(x)
         return x

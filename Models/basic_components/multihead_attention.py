@@ -16,6 +16,8 @@ class MultiHeadAttention(nn.Module):
         self.head_dim = embed_dim // num_heads
         self.scale = self.head_dim ** -0.5
         
+        assert self.embed_dim % self.num_heads == 0, "embed_dim must be divisible by num_heads"
+ 
         self.out_embed = out_embed
 
         self.query = nn.Linear(in_features=embed_dim, out_features=embed_dim, bias=self.bias)
@@ -30,11 +32,11 @@ class MultiHeadAttention(nn.Module):
         Q = rearrange(self.query(x), 'b n (h d) -> b h n d', h=self.num_heads)
         K = rearrange(self.key(x), 'b n (h d) -> b h n d', h=self.num_heads)
         V = rearrange(self.value(x), 'b n (h d) -> b h n d', h=self.num_heads)
-
-        attn = torch.einsum('bhid,bhjd->bhij', Q, K) * self.scale
-
+        
+        attn = torch.matmul(Q, K.transpose(-2, -1)) * self.scale
         attention = F.softmax(attn, dim=-1)
-        x = torch.einsum('bhij,bhjd->bhid', attention, V)
+        x = torch.matmul(attention, V)
+
         x = rearrange(x, 'b h n d -> b n (h d)')
         if self.out_embed:
             x = self.fc_out(x)
