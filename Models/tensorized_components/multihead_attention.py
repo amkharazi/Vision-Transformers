@@ -46,7 +46,7 @@ class MultiHeadAttention(nn.Module):
         self.out_embed = out_embed
         
         self.tensor_input_size =  (self.input_size[0], self.input_size[2]//self.patch_size + 1, self.input_size[3]//self.patch_size,
-                                self.patch_size, self.patch_size, self.input_size[1])
+                                self.embed_dim[0], self.embed_dim[1], self.embed_dim[2],)
 
         
         if tensor_method=='tdle':  
@@ -142,13 +142,25 @@ class MultiHeadAttention(nn.Module):
         V = rearrange(v, 'b p1 p2 (x h1) (y h2) (z h3) -> b h1 h2 h3 p1 p2 x y z', h1 = self.h1, h2 = self.h2, h3 = self.h3)
 
         attn = torch.matmul(
-                            Q.view(Q.shape[0], Q.shape[1], Q.shape[2], Q.shape[3], Q.shape[4] * Q.shape[5], Q.shape[6] * Q.shape[7] * Q.shape[8]),
-                            K.view(K.shape[0], K.shape[1], K.shape[2], K.shape[3], K.shape[4] * K.shape[5], K.shape[6] * K.shape[7] * K.shape[8]).transpose(-1, -2)
-                            ) * self.scale
+                    rearrange(Q, 'b h1 h2 h3 p1 p2 x y z -> b h1 h2 h3 (p1 p2) (x y z)'),
+                    rearrange(K, 'b h1 h2 h3 p1 p2 x y z -> b h1 h2 h3 (p1 p2) (x y z)').transpose(-1, -2)
+                ) * self.scale
         attention = F.softmax(attn, dim=-1)
         
-        x = torch.matmul(attention,V.view(V.shape[0], V.shape[1], V.shape[2], V.shape[3],V.shape[4] * V.shape[5],V.shape[6] * V.shape[7] * V.shape[8])).view_as(V)
-        x = rearrange(x, 'b h1 h2 h3 p1 p2 x y z  -> b p1 p2 (x h1) (y h2) (z h3)', h1 = self.h1, h2 = self.h2, h3 = self.h3)
+        x = torch.matmul(
+            attention,
+            rearrange(V, 'b h1 h2 h3 p1 p2 x y z -> b h1 h2 h3 (p1 p2) (x y z)')
+        )
+        
+        x = rearrange(x, 'b h1 h2 h3 (p1 p2) (x y z)  -> b p1 p2 (x h1) (y h2) (z h3)',
+                      h1 = self.h1,
+                      h2 = self.h2,
+                      h3 = self.h3,
+                      p1 = V.shape[4],
+                      p2 = V.shape[5],
+                      x  = V.shape[6],
+                      y  = V.shape[7],
+                      z  = V.shape[8])
 
         if self.out_embed:
             x = self.tensor_layer_out(x)

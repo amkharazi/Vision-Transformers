@@ -1,6 +1,9 @@
+import sys
+sys.path.append('..')
+
 import torch
 import torch.nn as nn
-from TLE import TLE
+from tensorized_layers.TLE import TLE
 
 class TP(nn.Module):
     def __init__(self, input_size, output_size, rank, ignore_modes=(0,), bias=True):

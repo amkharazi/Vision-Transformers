@@ -1,4 +1,7 @@
-from TLE import TLE
+import sys
+sys.path.append('..')
+
+from tensorized_layers.TLE import TLE
 import torch.nn as nn
 
 class TDLE(nn.Module):

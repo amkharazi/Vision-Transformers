@@ -37,7 +37,7 @@ class PatchEmbedding(nn.Module):
         self.ignore_modes = ignore_modes
 
         self.tensor_input_size =  (self.input_size[0], self.input_size[2]//self.patch_size, self.input_size[3]//self.patch_size,
-                                self.patch_size, self.patch_size, self.input_size[1])
+                                 self.input_size[1], self.patch_size, self.patch_size)
         if tensor_method=='tdle':                        
             self.tensor_layer = TDLE(
                             input_size=self.tensor_input_size,
@@ -53,7 +53,7 @@ class PatchEmbedding(nn.Module):
                             bias=self.bias,
                             )
         elif tensor_method=='tp':
-            rank = tuple(x - y for x, y in zip(self.input_size[-3:], reduce_level)) + self.embed_dim
+            rank = self.input_size[-3:] + self.embed_dim
             output_size = tuple(x + y for x, y in zip(self.embed_dim, reduce_level))
             self.tensor_layer = TP(input_size=self.input_size,
                                    output_size=output_size,

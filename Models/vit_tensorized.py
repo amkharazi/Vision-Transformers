@@ -76,7 +76,7 @@ class VisionTransformer(nn.Module):
 
         self.classifier = TP(
             input_size=(input_size[0], *embed_dim),
-            output=(num_classes,),
+            output_size=(num_classes,),
             rank = tuple(x - y for x, y in zip(embed_dim + (num_classes,), reduce_level + (0,))),
             ignore_modes=(0,),
             bias=bias,
