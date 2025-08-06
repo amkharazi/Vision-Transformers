@@ -2,7 +2,7 @@
 import sys
 sys.path.append('..')
 import torch.nn as nn
-from Models.basic_components.multihead_attention import MultiHeadAttention as MHA
+from models.basic_components.multihead_attention import MultiHeadAttention as MHA
 import torch
 
 class DropPath(nn.Module):
