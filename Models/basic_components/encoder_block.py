@@ -50,6 +50,7 @@ class Encoder(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(embed_dim, mlp_dim),
             nn.GELU(),
+            nn.Dropout(dropout), 
             nn.Linear(mlp_dim, embed_dim),
             nn.Dropout(dropout), 
         )

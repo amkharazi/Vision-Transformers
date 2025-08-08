@@ -103,6 +103,7 @@ class Encoder(nn.Module):
         self.mlp = nn.Sequential(
                         layer1,
                         nn.GELU(),
+                        nn.Dropout(dropout), 
                         layer2,
                         nn.Dropout(dropout)
                     )
