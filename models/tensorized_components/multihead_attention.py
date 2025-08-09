@@ -1,5 +1,6 @@
 import sys
 from typing import Iterable, Sequence, Tuple
+from typing import Union
 
 sys.path.append(".")
 
@@ -148,7 +149,7 @@ class MultiHeadAttention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        attn_mask: torch.Tensor | None = None,
+        attn_mask: Union[torch.Tensor, None] = None
     ):
         """
         x : (B, P_h+cls_tokens, P_w, d1, d2, d3)

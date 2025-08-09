@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
+from typing import Union
 
 
 class MultiHeadAttention(nn.Module):
@@ -49,8 +50,10 @@ class MultiHeadAttention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        attn_mask: torch.Tensor | None = None,          # (N, N) or (B, 1, N, N) or broadcastable
-        key_padding_mask: torch.Tensor | None = None,   # (B, N) bool, True = pad
+        
+        
+        attn_mask: Union[torch.Tensor, None] = None,        # (N, N) or (B, 1, N, N) or broadcastable
+        key_padding_mask: Union[torch.Tensor, None] = None,   # (B, N) bool, True = pad
         need_weights: bool = False,
     ):
         """
