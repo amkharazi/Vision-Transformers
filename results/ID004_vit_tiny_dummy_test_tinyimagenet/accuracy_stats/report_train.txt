@@ -75,3 +75,4 @@ original | epoch 74 | top1=0.1251 top2=0.1789 top3=0.2154 top4=0.2439 top5=0.267
 original | epoch 75 | top1=0.1255 top2=0.1796 top3=0.2163 top4=0.2452 top5=0.2685 loss=0.016528 time=477.02s
 original | epoch 76 | top1=0.1234 top2=0.1767 top3=0.2126 top4=0.2409 top5=0.2642 loss=0.016504 time=485.40s
 original | epoch 77 | top1=0.1240 top2=0.1776 top3=0.2147 top4=0.2429 top5=0.2663 loss=0.016522 time=469.52s
+original | epoch 78 | top1=0.1230 top2=0.1761 top3=0.2125 top4=0.2407 top5=0.2638 loss=0.016525 time=488.71s

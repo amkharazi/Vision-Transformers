@@ -153,3 +153,6 @@ original | epoch 152 | top1=0.5054 top2=0.7504 top3=0.8532 top4=0.9079 top5=0.93
 original | epoch 153 | top1=0.5014 top2=0.7517 top3=0.8551 top4=0.9102 top5=0.9405 loss=0.004611 time=238.64s
 original | epoch 154 | top1=0.4913 top2=0.7404 top3=0.8463 top4=0.9044 top5=0.9370 loss=0.004580 time=231.34s
 original | epoch 155 | top1=0.4906 top2=0.7426 top3=0.8474 top4=0.9048 top5=0.9367 loss=0.004583 time=230.00s
+original | epoch 156 | top1=0.4998 top2=0.7490 top3=0.8530 top4=0.9092 top5=0.9412 loss=0.004579 time=238.47s
+original | epoch 157 | top1=0.4787 top2=0.7344 top3=0.8444 top4=0.9037 top5=0.9367 loss=0.004581 time=242.87s
+original | epoch 158 | top1=0.4696 top2=0.7338 top3=0.8420 top4=0.9015 top5=0.9347 loss=0.004619 time=241.94s

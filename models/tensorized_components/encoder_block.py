@@ -176,12 +176,12 @@ class Encoder(nn.Module):
 if __name__ == "__main__":
     torch.manual_seed(0)
 
-    B, C, H, W = 2, 3, 32, 32
+    B, C, H, W = 256, 3, 32, 32
     ps = 8
     P_h, P_w = H // ps, W // ps
-    embed_dim = (4, 6, 8)
-    mlp_dim = (6, 8, 10)
-    heads = (2, 3, 4)
+    embed_dim = (4, 4, 4)
+    mlp_dim = (4, 4, 8)
+    heads = (2, 2, 2)
 
     x = torch.randn(B, P_h + 1, P_w, *embed_dim, requires_grad=True)
 

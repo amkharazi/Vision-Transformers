@@ -138,9 +138,9 @@ class PatchEmbedding(nn.Module):
 if __name__ == "__main__":
     torch.manual_seed(0)
 
-    B, C, H, W = 2, 3, 32, 32
-    ps = 8
-    embed_dim = (4, 3, 2)
+    B, C, H, W = 256, 3, 32, 32
+    ps = 4
+    embed_dim = (4, 4, 4)
     reduce_level = (0, 0, 0)
     P_h, P_w = H // ps, W // ps
 

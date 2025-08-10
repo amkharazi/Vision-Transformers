@@ -159,8 +159,11 @@ class MultiHeadAttention(nn.Module):
             raise ValueError(f"Expected 6D input (B, P_h+cls_tokens, P_w, d1, d2, d3), got {x.shape}")
         Bx, P1x, P2x, dx1, dx2, dx3 = x.shape
         B, P1, P2, d1, d2, d3 = self.tensor_input_size
-        if (Bx, P1x, P2x, dx1, dx2, dx3) != (B, P1, P2, d1, d2, d3):
-            raise ValueError(f"Input shape mismatch: expected {self.tensor_input_size}, got {tuple(x.shape)}")
+        # if (Bx, P1x, P2x, dx1, dx2, dx3) != (B, P1, P2, d1, d2, d3):
+        #     raise ValueError(f"Input shape mismatch: expected {self.tensor_input_size}, got {tuple(x.shape)}")
+        
+        if (P1x, P2x, dx1, dx2, dx3) != (P1, P2, d1, d2, d3):
+            raise ValueError(f"Input shape mismatch: expected {self.tensor_input_size}, got {tuple(x.shape)} excluding the first batch mode!")
 
         q = self.tensor_layer_Q(x)
         k = self.tensor_layer_K(x)
@@ -199,12 +202,12 @@ class MultiHeadAttention(nn.Module):
 if __name__ == "__main__":
     torch.manual_seed(0)
 
-    B, C, H, W = 2, 3, 32, 32
+    B, C, H, W = 256, 3, 32, 32
     ps = 8
     P_h, P_w = H // ps, W // ps
 
-    embed_dim = (4, 6, 8)
-    heads = (2, 3, 4)
+    embed_dim = (4, 4, 4)
+    heads = (2, 2, 2)
 
     x = torch.randn(B, P_h + 1, P_w, *embed_dim, requires_grad=True)
 
