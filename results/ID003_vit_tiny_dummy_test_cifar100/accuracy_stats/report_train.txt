@@ -195,3 +195,7 @@ original | epoch 194 | top1=0.2186 top2=0.2977 top3=0.3466 top4=0.3827 top5=0.41
 original | epoch 195 | top1=0.2098 top2=0.2858 top3=0.3332 top4=0.3680 top5=0.3958 loss=0.012653 time=195.06s
 original | epoch 196 | top1=0.2029 top2=0.2765 top3=0.3237 top4=0.3594 top5=0.3878 loss=0.012766 time=199.51s
 original | epoch 197 | top1=0.2285 top2=0.3100 top3=0.3606 top4=0.3980 top5=0.4280 loss=0.012740 time=193.32s
+original | epoch 198 | top1=0.2031 top2=0.2786 top3=0.3261 top4=0.3613 top5=0.3888 loss=0.012827 time=199.65s
+original | epoch 199 | top1=0.2085 top2=0.2841 top3=0.3319 top4=0.3676 top5=0.3959 loss=0.012678 time=198.58s
+original | epoch 200 | top1=0.2173 top2=0.2957 top3=0.3458 top4=0.3822 top5=0.4116 loss=0.012736 time=189.85s
+original | epoch 201 | top1=0.2191 top2=0.2976 top3=0.3464 top4=0.3823 top5=0.4112 loss=0.012661 time=198.67s

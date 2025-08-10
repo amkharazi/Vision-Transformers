@@ -1,0 +1,10 @@
+model_type=tensorized
+num_parameters_total=2372946
+num_parameters_trainable=2372946
+dataset=stl10
+seed=None
+model_type=tensorized
+num_parameters_total=2372946
+num_parameters_trainable=2372946
+dataset=stl10
+seed=None
