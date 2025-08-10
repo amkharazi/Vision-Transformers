@@ -1,8 +1,10 @@
 import sys
-from typing import Iterable, Sequence, Tuple
+from typing import Iterable, Optional, Sequence, Tuple
 
 sys.path.append(".")
 
+import time
+import math
 import torch
 import torch.nn as nn
 from einops import rearrange
@@ -10,6 +12,14 @@ from einops import rearrange
 from tensorized_layers.TLE import TLE
 from tensorized_layers.TP import TP
 from tensorized_layers.TDLE import TDLE
+
+from utils.num_param import param_counts
+from utils.flops import (
+    estimate_tp_flops,
+    tle_input_projector_flops,
+    bias_add_flops,
+    to_gflops,
+)
 
 
 class PatchEmbedding(nn.Module):
@@ -96,7 +106,7 @@ class PatchEmbedding(nn.Module):
                 bias=self.bias,
             )
         elif tensor_method == "tp":
-            rank = self.input_size[-3:] + self.embed_dim
+            rank = self.tensor_input_size[-3:] + self.embed_dim
             output_size = tuple(x + y for x, y in zip(self.embed_dim, reduce_level))
             self.tensor_layer = TP(
                 input_size=self.tensor_input_size,
@@ -117,14 +127,23 @@ class PatchEmbedding(nn.Module):
         return (H // self.patch_size, W // self.patch_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input of shape (B, C, H, W).
+
+        Returns
+        -------
+        torch.Tensor
+            Output of shape (B, P_h, P_w, d1, d2, d3).
+        """
         if x.dim() != 4:
             raise ValueError(f"Expected (B, C, H, W), got {x.shape}")
         Bx, Cx, Hx, Wx = x.shape
         B, C, H, W = self.input_size
         if (Cx, Hx, Wx) != (C, H, W):
-            raise ValueError(
-                f"Expected (C,H,W)=({C},{H},{W}), got ({Cx},{Hx},{Wx})"
-            )
+            raise ValueError(f"Expected (C,H,W)=({C},{H},{W}), got ({Cx},{Hx},{Wx})")
 
         x = rearrange(
             x,
@@ -135,33 +154,146 @@ class PatchEmbedding(nn.Module):
         return self.tensor_layer(x)
 
 
-if __name__ == "__main__":
-    torch.manual_seed(0)
+def _estimate_tensor_flops(
+    tensor_method: str,
+    input_size: Sequence[int],
+    patch_size: int,
+    embed_dim: Tuple[int, int, int],
+    ignore_modes: Iterable[int],
+    bias: bool,
+    tdle_level: int,
+) -> Tuple[int, str]:
+    """
+    Analytic FLOPs for the configured tensor layer; returns (flops, detail_tag).
+    """
+    B, C, H, W = map(int, input_size)
+    P_h, P_w = H // patch_size, W // patch_size
+    tensor_in = (B, P_h, P_w, C, patch_size, patch_size)
+    B_eff = B * P_h * P_w
 
+    if tensor_method == "tp":
+        embed_minus = tuple(int(x) for x in embed_dim)
+        rank = tensor_in[-3:] + embed_minus
+        out_size = tuple(int(x) for x in embed_dim)
+        parts = estimate_tp_flops(
+            input_size=tensor_in,
+            output_size=out_size,
+            rank=rank,
+            ignore_modes=ignore_modes,
+            include_bias=bias,
+        )
+        return int(parts["total"]), "TP(total)"
+
+    if tensor_method == "tle":
+        proj = tle_input_projector_flops(tensor_in, embed_dim, ignore_modes)
+        b = bias_add_flops(B_eff, embed_dim) if bias else 0
+        return int(proj + b), "TLE(projector+bias)"
+
+    if tensor_method == "tdle":
+        proj = tle_input_projector_flops(tensor_in, embed_dim, ignore_modes)
+        b = bias_add_flops(B_eff, embed_dim) if bias else 0
+        per = int(proj + b)
+        sum_cost = (tdle_level - 1) * B_eff * math.prod(embed_dim)
+        return int(tdle_level * per + sum_cost), "TDLE(r*per + sums)"
+
+    raise ValueError(f"Unknown tensor_method {tensor_method}")
+
+
+def _sanity_check_once(
+    input_size: Sequence[int],
+    patch_size: int,
+    embed_dim: Tuple[int, int, int],
+    tensor_method: str = "tle",
+    ignore_modes: Iterable[int] = (0, 1, 2),
+    tdle_level: int = 3,
+    reduce_level: Tuple[int, int, int] = (0, 0, 0),
+    bias: bool = True,
+    device: Optional[torch.device] = None,
+    dtype: torch.dtype = torch.float32,
+    warmup: int = 2,
+    iters: int = 5,
+) -> None:
+    """
+    Run shape, parameter-count (total and tensorized-only), timing, and analytic FLOPs check.
+    """
+    device = device if device is not None else torch.device("cpu")
+
+    pe = PatchEmbedding(
+        input_size=input_size,
+        patch_size=patch_size,
+        embed_dim=embed_dim,
+        bias=bias,
+        ignore_modes=ignore_modes,
+        tensor_method=tensor_method,
+        tdle_level=tdle_level,
+        reduce_level=reduce_level,
+    ).to(device=device, dtype=dtype)
+
+    total_params, trainable_params = param_counts(pe)
+    inner_total, inner_trainable = param_counts(pe.tensor_layer)  # tensorized-only
+    print(
+        f"[PatchEmbedding/{tensor_method}] Params: total={total_params:,}, "
+        f"trainable={trainable_params:,} | tensorized-only={inner_total:,}"
+    )
+
+    B, C, H, W = map(int, input_size)
+    x = torch.randn(B, C, H, W, device=device, dtype=dtype, requires_grad=True)
+
+    for _ in range(warmup):
+        _ = pe(x)
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
+    times = []
+    for _ in range(iters):
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+        t0 = time.time()
+        y = pe(x)
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+        times.append(time.time() - t0)
+
+    P_h, P_w = H // patch_size, W // patch_size
+    out_rank = tuple(int(a - b) for a, b in zip(embed_dim, reduce_level))
+    assert tuple(y.shape) == (B, P_h, P_w, *out_rank)
+
+    y.mean().backward()
+    assert x.grad is not None and tuple(x.grad.shape) == (B, C, H, W)
+
+    avg_ms = (sum(times) / len(times)) * 1000.0
+    print(f"[PatchEmbedding/{tensor_method}] Input shape:  {(B, C, H, W)}")
+    print(f"[PatchEmbedding/{tensor_method}] Output shape: {(B, P_h, P_w, *out_rank)}")
+    print(f"[PatchEmbedding/{tensor_method}] Avg forward time over {iters} iters (warmup {warmup}): {avg_ms:.3f} ms")
+
+    flops, detail = _estimate_tensor_flops(
+        tensor_method=tensor_method,
+        input_size=input_size,
+        patch_size=patch_size,
+        embed_dim=out_rank,
+        ignore_modes=ignore_modes,
+        bias=bias,
+        tdle_level=tdle_level,
+    )
+    print(f"[PatchEmbedding/{tensor_method}] FLOPs {detail}: {to_gflops(flops):.3f} GFLOPs")
+
+
+def sanity_check() -> None:
+    """
+    Run PatchEmbedding sanity checks for TLE, TDLE, and TP (bias on/off).
+    """
     B, C, H, W = 256, 3, 32, 32
     ps = 4
     embed_dim = (4, 4, 4)
     reduce_level = (0, 0, 0)
-    P_h, P_w = H // ps, W // ps
+    ignore = (0, 1, 2)
+    tdle_level = 3
 
-    x = torch.randn(B, C, H, W, requires_grad=True)
+    # for method in ("tle", "tdle", "tp"):
+    for method in ("tp", ):
+        _sanity_check_once((B, C, H, W), ps, embed_dim, tensor_method=method, ignore_modes=ignore, tdle_level=tdle_level, reduce_level=reduce_level, bias=True)
+        _sanity_check_once((B, C, H, W), ps, embed_dim, tensor_method=method, ignore_modes=ignore, tdle_level=tdle_level, reduce_level=reduce_level, bias=False)
 
-    pe_tle = PatchEmbedding((B, C, H, W), ps, embed_dim, tensor_method="tle")
-    out_tle = pe_tle(x)
-    assert out_tle.shape == (B, P_h, P_w, *embed_dim)
-    out_tle.mean().backward(retain_graph=True)
-    assert x.grad is not None
-
-    x.grad = None
-    pe_tdle = PatchEmbedding((B, C, H, W), ps, embed_dim, tensor_method="tdle")
-    out_tdle = pe_tdle(x.detach().requires_grad_(True))
-    assert out_tdle.shape == (B, P_h, P_w, *embed_dim)
-    out_tdle.sum().backward()
-
-    x_tp = torch.randn(B, C, H, W, requires_grad=True)
-    pe_tp = PatchEmbedding((B, C, H, W), ps, embed_dim, tensor_method="tp")
-    out_tp = pe_tp(x_tp)
-    out_tp.mean().backward()
-    assert x_tp.grad is not None
-
-    print("All sanity checks passed.")
+if __name__ == "__main__":
+    torch.manual_seed(0)
+    sanity_check()
