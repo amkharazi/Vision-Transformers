@@ -1,0 +1,5 @@
+model_type=original
+num_parameters_total=214950
+num_parameters_trainable=214950
+dataset=flowers102
+seed=None
