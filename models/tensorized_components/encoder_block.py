@@ -1,5 +1,6 @@
 import sys
 from typing import Iterable, Sequence, Tuple
+from typing import Optional
 
 sys.path.append(".")
 
@@ -16,7 +17,7 @@ from tensorized_layers.TP import TP
 class DropPath(nn.Module):
     """Stochastic depth (per-sample)."""
 
-    def __init__(self, drop_prob: float | None = None) -> None:
+    def __init__(self, drop_prob: Optional[float] = None) -> None:
         super().__init__()
         self.drop_prob = float(drop_prob or 0.0)
 
