@@ -7,7 +7,7 @@ import time
 import math
 import torch
 import torch.nn as nn
-from einops import rearrange  # noqa: F401
+from einops import rearrange
 
 from models.tensorized_components.multihead_attention import MultiHeadAttention as MHA
 from tensorized_layers.TLE import TLE
@@ -57,11 +57,11 @@ class Encoder(nn.Module):
     patch_size : int
         Patch size (H and W must be divisible by this).
     embed_dim : Tuple[int, int, int]
-        Token embedding dims (d1, d2, d3) before reduction.
+        Token embedding dims (d1, d2, d3).
     num_heads : Tuple[int, int, int]
         Heads per mode for MHA.
     mlp_dim : Tuple[int, int, int]
-        Hidden dims for the MLP (before reduction).
+        Hidden dims for the MLP.
     dropout : float, default 0.5
     bias : bool, default True
     out_embed : bool, default True
@@ -73,8 +73,12 @@ class Encoder(nn.Module):
     tensor_method : str, default 'tle'
         Method for MHA's Q/K/V/out projections.
     tdle_level : int, default 3
-    reduce_level : Tuple[int,int,int], default (0,0,0)
-        Effective dims = dims - reduce_level.
+    rank_attn : Optional[Sequence[int]], default None
+        Rank used only when tensor_method == 'tp' inside attention. If None, defaults to (*in_modes, *out_modes).
+    rank_mlp1 : Optional[Sequence[int]], default None
+        Rank for first MLP TP layer mapping embed_dim → mlp_dim. If None, defaults to (*embed_dim, *mlp_dim).
+    rank_mlp2 : Optional[Sequence[int]], default None
+        Rank for second MLP TP layer mapping mlp_dim → embed_dim. If None, defaults to (*mlp_dim, *embed_dim).
     """
 
     def __init__(
@@ -92,7 +96,9 @@ class Encoder(nn.Module):
         tensor_method_mlp: Tuple[str, str] = ("tle", "tle"),
         tensor_method: str = "tle",
         tdle_level: int = 3,
-        reduce_level: Tuple[int, int, int] = (0, 0, 0),
+        rank_attn: Optional[Sequence[int]] = None,
+        rank_mlp1: Optional[Sequence[int]] = None,
+        rank_mlp2: Optional[Sequence[int]] = None,
     ) -> None:
         super().__init__()
 
@@ -107,18 +113,15 @@ class Encoder(nn.Module):
         if H % patch_size or W % patch_size:
             raise ValueError(f"H and W must be divisible by patch_size={patch_size}")
 
-        eff_embed = tuple(e - r for e, r in zip(embed_dim, reduce_level))
-        eff_mlp = tuple(m - r for m, r in zip(mlp_dim, reduce_level))
-        if any(d <= 0 for d in eff_embed + eff_mlp):
-            raise ValueError(f"embed_dim/mlp_dim - reduce_level must be > 0, got {eff_embed}, {eff_mlp}")
+        if any(d <= 0 for d in (*embed_dim, *mlp_dim)):
+            raise ValueError(f"embed_dim and mlp_dim entries must be > 0, got {embed_dim}, {mlp_dim}")
 
         self.input_size = (B, C, H, W)
         self.patch_size = int(patch_size)
-        self.embed_dim = eff_embed
-        self.mlp_dim = eff_mlp
+        self.embed_dim = tuple(int(x) for x in embed_dim)
+        self.mlp_dim = tuple(int(x) for x in mlp_dim)
         self.bias = bool(bias)
         self.ignore_modes = tuple(ignore_modes)
-        self.reduce_level = reduce_level
 
         P_h, P_w = H // self.patch_size, W // self.patch_size
         self.tensor_input_size_layer1 = (B, P_h + 1, P_w, *self.embed_dim)
@@ -131,26 +134,34 @@ class Encoder(nn.Module):
         self.attention = MHA(
             input_size=input_size,
             patch_size=patch_size,
-            embed_dim=embed_dim,
+            embed_dim=self.embed_dim,
             num_heads=num_heads,
             bias=bias,
             out_embed=out_embed,
             ignore_modes=ignore_modes,
             tensor_method=tensor_method,
             tdle_level=tdle_level,
-            reduce_level=reduce_level,
+            rank=rank_attn,
         )
+
+        def resolve_tp_rank(in_modes: Tuple[int, ...], out_modes: Tuple[int, ...], r: Optional[Sequence[int]]) -> Tuple[int, ...]:
+            if r is not None:
+                return tuple(int(x) for x in r)
+            return tuple(int(m) for m in (*in_modes, *out_modes))
 
         if tensor_method_mlp[0] == "tdle":
             layer1 = TDLE(self.tensor_input_size_layer1, self.mlp_dim, ignore_modes, bias, r=tdle_level)
         elif tensor_method_mlp[0] == "tle":
             layer1 = TLE(self.tensor_input_size_layer1, self.mlp_dim, ignore_modes, bias)
         else:
-            rank = self.embed_dim + self.mlp_dim
+            r1 = resolve_tp_rank(self.embed_dim, self.mlp_dim, rank_mlp1)
+            exp1 = len(self.embed_dim) + len(self.mlp_dim)
+            if len(r1) != exp1 or any(int(v) <= 0 for v in r1):
+                raise ValueError(f"rank_mlp1 must be length {exp1} with positive entries, got {r1}")
             layer1 = TP(
                 input_size=self.tensor_input_size_layer1,
                 output_size=self.mlp_dim,
-                rank=rank,
+                rank=r1,
                 ignore_modes=ignore_modes,
                 bias=bias,
             )
@@ -160,11 +171,14 @@ class Encoder(nn.Module):
         elif tensor_method_mlp[1] == "tle":
             layer2 = TLE(self.tensor_input_size_layer2, self.embed_dim, ignore_modes, bias)
         else:
-            rank = self.mlp_dim + self.embed_dim
+            r2 = resolve_tp_rank(self.mlp_dim, self.embed_dim, rank_mlp2)
+            exp2 = len(self.mlp_dim) + len(self.embed_dim)
+            if len(r2) != exp2 or any(int(v) <= 0 for v in r2):
+                raise ValueError(f"rank_mlp2 must be length {exp2} with positive entries, got {r2}")
             layer2 = TP(
                 input_size=self.tensor_input_size_layer2,
                 output_size=self.embed_dim,
-                rank=rank,
+                rank=r2,
                 ignore_modes=ignore_modes,
                 bias=bias,
             )
@@ -202,11 +216,11 @@ def _flops_tensor_layer(
     bias: bool,
     tdle_level: int,
     in_dims: Optional[Tuple[int, int, int]] = None,
+    rank: Optional[Sequence[int]] = None,
 ) -> int:
     """
-    Analytic FLOPs for one tensorized mapping from in_dims to out_dims over `tensor_in`.
-
-    For TP, provide `in_dims` explicitly; for TLE/TDLE it is derived from `tensor_in`.
+    Analytic FLOPs for one tensorized mapping from in_dims to out_dims over tensor_in.
+    For TP, if rank is None, defaults to (*in_dims, *out_dims).
     """
     B, P1, P2, d1, d2, d3 = tensor_in
     B_eff = B * P1 * P2
@@ -214,11 +228,11 @@ def _flops_tensor_layer(
     if method == "tp":
         if in_dims is None:
             in_dims = (d1, d2, d3)
-        rank = tuple(in_dims) + tuple(out_dims)
+        r = tuple(int(x) for x in (rank if rank is not None else (*in_dims, *out_dims)))
         parts = estimate_tp_flops(
             input_size=tensor_in,
             output_size=out_dims,
-            rank=rank,
+            rank=r,
             ignore_modes=ignore_modes,
             include_bias=bias,
         )
@@ -253,6 +267,9 @@ def _sanity_check_once(
     out_embed: bool = True,
     include_softmax: bool = False,
     drop_path: float = 0.1,
+    rank_attn: Optional[Sequence[int]] = None,
+    rank_mlp1: Optional[Sequence[int]] = None,
+    rank_mlp2: Optional[Sequence[int]] = None,
     device: Optional[torch.device] = None,
     dtype: torch.dtype = torch.float32,
     warmup: int = 2,
@@ -276,7 +293,9 @@ def _sanity_check_once(
         tensor_method_mlp=tensor_method_mlp,
         tensor_method=tensor_method,
         tdle_level=tdle_level,
-        reduce_level=(0, 0, 0),
+        rank_attn=rank_attn,
+        rank_mlp1=rank_mlp1,
+        rank_mlp2=rank_mlp2,
     ).to(device=device, dtype=dtype)
 
     total_params, trainable_params = param_counts(enc)
@@ -300,7 +319,7 @@ def _sanity_check_once(
 
     B, C, H, W = map(int, input_size)
     P_h, P_w = H // patch_size, W // patch_size
-    x = torch.randn(B, P_h + 1, P_w, *tuple(e - 0 for e in embed_dim), device=device, dtype=dtype, requires_grad=True)
+    x = torch.randn(B, P_h + 1, P_w, *tuple(embed_dim), device=device, dtype=dtype, requires_grad=True)
 
     for _ in range(warmup):
         _ = enc(x)
@@ -329,19 +348,17 @@ def _sanity_check_once(
 
     d1, d2, d3 = enc.embed_dim
     seq = (P_h + 1) * P_w
-    heads = num_heads
-    h1, h2, h3 = heads
+    h1, h2, h3 = num_heads
     dph = (d1 // h1) * (d2 // h2) * (d3 // h3)
-
     tensor_in = (B, P_h + 1, P_w, d1, d2, d3)
 
-    fl_q = _flops_tensor_layer(tensor_method, tensor_in, (d1, d2, d3), ignore_modes, bias, tdle_level, in_dims=(d1, d2, d3))
+    fl_q = _flops_tensor_layer(tensor_method, tensor_in, (d1, d2, d3), ignore_modes, bias, tdle_level, in_dims=(d1, d2, d3), rank=rank_attn)
     fl_k = fl_q
     fl_v = fl_q
     fl_qk = 2 * B * (h1 * h2 * h3) * seq * seq * dph
     fl_av = 2 * B * (h1 * h2 * h3) * seq * seq * dph
     fl_softmax = (2 * B * (h1 * h2 * h3) * seq * seq) if include_softmax else 0
-    fl_out = _flops_tensor_layer(tensor_method, tensor_in, (d1, d2, d3), ignore_modes, bias, tdle_level, in_dims=(d1, d2, d3)) if attn.tensor_layer_out is not None else 0
+    fl_out = _flops_tensor_layer(tensor_method, tensor_in, (d1, d2, d3), ignore_modes, bias, tdle_level, in_dims=(d1, d2, d3), rank=rank_attn) if attn.tensor_layer_out is not None else 0
 
     fl_ln = 2 * layernorm_flops(B, seq, d1 * d2 * d3)
     fl_res = 2 * residual_add_flops(B, seq, d1 * d2 * d3)
@@ -351,8 +368,8 @@ def _sanity_check_once(
     mlp_l2_in = (B, P_h + 1, P_w, enc.mlp_dim[0], enc.mlp_dim[1], enc.mlp_dim[2])
 
     m1_method, m2_method = tensor_method_mlp
-    fl_m1 = _flops_tensor_layer(m1_method, mlp_l1_in, enc.mlp_dim, ignore_modes, bias, tdle_level, in_dims=(d1, d2, d3))
-    fl_m2 = _flops_tensor_layer(m2_method, mlp_l2_in, (d1, d2, d3), ignore_modes, bias, tdle_level, in_dims=enc.mlp_dim)
+    fl_m1 = _flops_tensor_layer(m1_method, mlp_l1_in, enc.mlp_dim, ignore_modes, bias, tdle_level, in_dims=(d1, d2, d3), rank=rank_mlp1)
+    fl_m2 = _flops_tensor_layer(m2_method, mlp_l2_in, (d1, d2, d3), ignore_modes, bias, tdle_level, in_dims=enc.mlp_dim, rank=rank_mlp2)
 
     total_flops = fl_ln + fl_q + fl_k + fl_v + fl_qk + fl_av + fl_softmax + fl_out + fl_m1 + fl_m2 + fl_res + fl_dp
 

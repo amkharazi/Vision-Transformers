@@ -33,11 +33,11 @@ class PatchEmbedding(nn.Module):
     Parameters
     ----------
     input_size : Sequence[int]
-        (B, C, H, W) of the input.
+        Shape (B, C, H, W) of the input.
     patch_size : int
-        Size of each patch (H and W must be divisible by this).
+        Size of each square patch. H and W must be divisible by this value.
     embed_dim : Tuple[int, int, int]
-        Factorized embedding rank (d1, d2, d3), adjusted internally by reduce_level.
+        Output embedding mode sizes (d1, d2, d3). Used as the rank for TLE/TDLE and as the output size for TP.
     bias : bool, default True
         Whether to include bias in the tensorized layer.
     ignore_modes : Iterable[int], default (0, 1, 2)
@@ -46,8 +46,9 @@ class PatchEmbedding(nn.Module):
         Which tensorized layer to use.
     tdle_level : int, default 3
         Hierarchy level for TDLE.
-    reduce_level : Tuple[int, int, int], default (0, 0, 0)
-        Per-mode reduction applied to embed_dim.
+    rank : Optional[Sequence[int]], default None
+        Rank vector used only when tensor_method == 'tp'. If None, defaults to concatenating
+        input modes and output modes as rank = (*in_modes, *out_modes). Ignored for 'tle' and 'tdle'.
     """
 
     def __init__(
@@ -59,14 +60,12 @@ class PatchEmbedding(nn.Module):
         ignore_modes: Iterable[int] = (0, 1, 2),
         tensor_method: str = "tle",
         tdle_level: int = 3,
-        reduce_level: Tuple[int, int, int] = (0, 0, 0),
+        rank: Optional[Sequence[int]] = None,
     ) -> None:
         super().__init__()
 
         if not isinstance(embed_dim, tuple) or len(embed_dim) != 3:
             raise TypeError(f"embed_dim must be a 3-tuple, got {embed_dim}")
-        if not isinstance(reduce_level, tuple) or len(reduce_level) != 3:
-            raise TypeError(f"reduce_level must be a 3-tuple, got {reduce_level}")
         if tensor_method not in {"tle", "tdle", "tp"}:
             raise ValueError(f"Invalid tensor_method '{tensor_method}'")
         if not (isinstance(input_size, Sequence) and len(input_size) == 4):
@@ -75,20 +74,25 @@ class PatchEmbedding(nn.Module):
         B, C, H, W = map(int, input_size)
         if H % patch_size != 0 or W % patch_size != 0:
             raise ValueError(f"H and W must be divisible by patch_size={patch_size}")
-
-        _embed_dim = tuple(x - y for x, y in zip(embed_dim, reduce_level))
-        if any(d <= 0 for d in _embed_dim):
-            raise ValueError(f"embed_dim - reduce_level must be > 0, got {_embed_dim}")
+        if any(int(d) <= 0 for d in embed_dim):
+            raise ValueError(f"embed_dim entries must be > 0, got {embed_dim}")
 
         self.input_size = (B, C, H, W)
         self.patch_size = patch_size
-        self.embed_dim = _embed_dim
+        self.embed_dim = tuple(int(d) for d in embed_dim)
         self.bias = bias
         self.ignore_modes = tuple(ignore_modes)
         self.tensor_method = tensor_method
 
         P_h, P_w = H // patch_size, W // patch_size
         self.tensor_input_size = (B, P_h, P_w, C, patch_size, patch_size)
+
+        def resolve_tp_rank(r: Optional[Sequence[int]]) -> Tuple[int, ...]:
+            if r is not None:
+                return tuple(int(x) for x in r)
+            in_modes = self.tensor_input_size[3:]
+            out_modes = self.embed_dim
+            return tuple(int(m) for m in (*in_modes, *out_modes))
 
         if tensor_method == "tdle":
             self.tensor_layer = TDLE(
@@ -106,12 +110,16 @@ class PatchEmbedding(nn.Module):
                 bias=self.bias,
             )
         elif tensor_method == "tp":
-            rank = self.tensor_input_size[-3:] + self.embed_dim
-            output_size = tuple(x + y for x, y in zip(self.embed_dim, reduce_level))
+            tp_rank = resolve_tp_rank(rank)
+            expected_len = len(self.tensor_input_size[3:]) + len(self.embed_dim)
+            if len(tp_rank) != expected_len:
+                raise ValueError(f"rank length must be {expected_len} for TP, got {len(tp_rank)}")
+            if any(int(r) <= 0 for r in tp_rank):
+                raise ValueError(f"rank entries must be > 0, got {tp_rank}")
             self.tensor_layer = TP(
                 input_size=self.tensor_input_size,
-                output_size=output_size,
-                rank=rank,
+                output_size=self.embed_dim,
+                rank=tp_rank,
                 ignore_modes=self.ignore_modes,
                 bias=self.bias,
             )
@@ -136,7 +144,7 @@ class PatchEmbedding(nn.Module):
         Returns
         -------
         torch.Tensor
-            Output of shape (B, P_h, P_w, d1, d2, d3).
+            Output of shape (B, P_h, P_w, d1, d2, d3) where (d1, d2, d3) == embed_dim.
         """
         if x.dim() != 4:
             raise ValueError(f"Expected (B, C, H, W), got {x.shape}")
@@ -162,6 +170,7 @@ def _estimate_tensor_flops(
     ignore_modes: Iterable[int],
     bias: bool,
     tdle_level: int,
+    rank: Optional[Sequence[int]] = None,
 ) -> Tuple[int, str]:
     """
     Analytic FLOPs for the configured tensor layer; returns (flops, detail_tag).
@@ -172,13 +181,15 @@ def _estimate_tensor_flops(
     B_eff = B * P_h * P_w
 
     if tensor_method == "tp":
-        embed_minus = tuple(int(x) for x in embed_dim)
-        rank = tensor_in[-3:] + embed_minus
+        if rank is None:
+            in_modes = tensor_in[3:]
+            out_modes = embed_dim
+            rank = tuple(int(m) for m in (*in_modes, *out_modes))
         out_size = tuple(int(x) for x in embed_dim)
         parts = estimate_tp_flops(
             input_size=tensor_in,
             output_size=out_size,
-            rank=rank,
+            rank=tuple(int(r) for r in rank),
             ignore_modes=ignore_modes,
             include_bias=bias,
         )
@@ -206,7 +217,7 @@ def _sanity_check_once(
     tensor_method: str = "tle",
     ignore_modes: Iterable[int] = (0, 1, 2),
     tdle_level: int = 3,
-    reduce_level: Tuple[int, int, int] = (0, 0, 0),
+    rank: Optional[Sequence[int]] = None,
     bias: bool = True,
     device: Optional[torch.device] = None,
     dtype: torch.dtype = torch.float32,
@@ -226,11 +237,11 @@ def _sanity_check_once(
         ignore_modes=ignore_modes,
         tensor_method=tensor_method,
         tdle_level=tdle_level,
-        reduce_level=reduce_level,
+        rank=rank,
     ).to(device=device, dtype=dtype)
 
     total_params, trainable_params = param_counts(pe)
-    inner_total, inner_trainable = param_counts(pe.tensor_layer)  # tensorized-only
+    inner_total, inner_trainable = param_counts(pe.tensor_layer)
     print(
         f"[PatchEmbedding/{tensor_method}] Params: total={total_params:,}, "
         f"trainable={trainable_params:,} | tensorized-only={inner_total:,}"
@@ -255,7 +266,7 @@ def _sanity_check_once(
         times.append(time.time() - t0)
 
     P_h, P_w = H // patch_size, W // patch_size
-    out_rank = tuple(int(a - b) for a, b in zip(embed_dim, reduce_level))
+    out_rank = tuple(int(a) for a in embed_dim)
     assert tuple(y.shape) == (B, P_h, P_w, *out_rank)
 
     y.mean().backward()
@@ -274,6 +285,7 @@ def _sanity_check_once(
         ignore_modes=ignore_modes,
         bias=bias,
         tdle_level=tdle_level,
+        rank=rank,
     )
     print(f"[PatchEmbedding/{tensor_method}] FLOPs {detail}: {to_gflops(flops):.3f} GFLOPs")
 
@@ -285,14 +297,15 @@ def sanity_check() -> None:
     B, C, H, W = 256, 3, 32, 32
     ps = 4
     embed_dim = (4, 4, 4)
-    reduce_level = (0, 0, 0)
     ignore = (0, 1, 2)
     tdle_level = 3
 
-    # for method in ("tle", "tdle", "tp"):
-    for method in ("tp", ):
-        _sanity_check_once((B, C, H, W), ps, embed_dim, tensor_method=method, ignore_modes=ignore, tdle_level=tdle_level, reduce_level=reduce_level, bias=True)
-        _sanity_check_once((B, C, H, W), ps, embed_dim, tensor_method=method, ignore_modes=ignore, tdle_level=tdle_level, reduce_level=reduce_level, bias=False)
+    methods = ("tle", "tdle", "tp")
+    for method in methods:
+        tp_rank = None
+        _sanity_check_once((B, C, H, W), ps, embed_dim, tensor_method=method, ignore_modes=ignore, tdle_level=tdle_level, rank=tp_rank, bias=True)
+        _sanity_check_once((B, C, H, W), ps, embed_dim, tensor_method=method, ignore_modes=ignore, tdle_level=tdle_level, rank=tp_rank, bias=False)
+
 
 if __name__ == "__main__":
     torch.manual_seed(0)

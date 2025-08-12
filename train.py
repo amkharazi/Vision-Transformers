@@ -5,7 +5,7 @@ import os
 import time
 import random
 import argparse
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional, Sequence
 
 import numpy as np
 import torch
@@ -22,6 +22,7 @@ from utils.fashionmnist_loaders import get_fashionmnist_dataloaders
 from utils.flowers102_loaders import get_flowers102_dataloaders
 from utils.oxford_pets_loaders import get_oxford_pets_dataloaders
 from utils.stl10_classification_loaders import get_stl10_classification_dataloaders
+from utils.food101_loaders import get_food101_dataloaders
 
 from utils.accuracy_measures import topk_accuracy
 from utils.num_param import count_parameters, param_counts
@@ -86,7 +87,11 @@ def build_model(model_type: str,
             tensor_method_mlp=tuple(tensor_kwargs["tensor_method_mlp"]),
             tensor_method=tensor_kwargs["tensor_method"],
             tdle_level=tensor_kwargs["tdle_level"],
-            reduce_level=tuple(tensor_kwargs["reduce_level"]),
+            rank_patch=tensor_kwargs.get("rank_patch"),
+            rank_attn=tensor_kwargs.get("rank_attn"),
+            rank_mlp1=tensor_kwargs.get("rank_mlp1"),
+            rank_mlp2=tensor_kwargs.get("rank_mlp2"),
+            rank_classifier=tensor_kwargs.get("rank_classifier"),
         )
     elif model_type == "original":
         from models.vit_original import VisionTransformer
@@ -215,6 +220,23 @@ def get_train_loader(dataset: str, data_root: str, batch_size: int, image_size: 
         ])
         loader, _ = get_flowers102_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)
         return loader
+    if dataset == 'food101':
+        transform_train = transforms.Compose([
+            RandAugment(),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+            transforms.RandomRotation(10),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            RandomErasing(p=0.25)
+        ])
+        transform_test = transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        ])
+        loader, _ = get_food101_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)
+        return loader
     if dataset == 'oxford_pets':
         transform_train = transforms.Compose([
             RandAugment(),
@@ -279,12 +301,17 @@ def main():
 
     p.add_argument('--embed_dim', type=int, nargs=3, default=[3, 4, 4])
     p.add_argument('--num_heads', type=int, nargs=3, default=[1, 2, 2])
-    p.add_argument('--mlp_dim', type=int, nargs=3, default=[3, 4, 4])
+    p.add_argument('--mlp_dim', type=int, nargs=3, default=[3, 4, 8])
     p.add_argument('--ignore_modes', type=int, nargs=3, default=[0, 1, 2])
     p.add_argument('--tensor_method', type=str, default='tle', choices=['tle', 'tdle', 'tp'])
     p.add_argument('--tensor_method_mlp', type=str, nargs=2, default=['tle', 'tle'])
     p.add_argument('--tdle_level', type=int, default=3)
-    p.add_argument('--reduce_level', type=int, nargs=3, default=[0, 0, 0])
+
+    p.add_argument('--rank_patch', type=int, nargs='*', default=None)
+    p.add_argument('--rank_attn', type=int, nargs='*', default=None)
+    p.add_argument('--rank_mlp1', type=int, nargs='*', default=None)
+    p.add_argument('--rank_mlp2', type=int, nargs='*', default=None)
+    p.add_argument('--rank_classifier', type=int, nargs='*', default=None)
 
     p.add_argument('--embed_dim_original', type=int, default=3*4*4)
     p.add_argument('--num_heads_original', type=int, default=1*2*2)

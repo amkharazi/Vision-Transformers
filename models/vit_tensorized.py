@@ -20,7 +20,7 @@ from utils.flops import (
     residual_add_flops,
     droppath_flops,
     to_gflops,
-    try_thop_gflops,  # your version in utils.flops
+    try_thop_gflops,
 )
 
 class VisionTransformer(nn.Module):
@@ -28,7 +28,7 @@ class VisionTransformer(nn.Module):
     Tensorized Vision Transformer with single-column CLS.
 
     Tokens: (B, P_h+1, P_w, d1, d2, d3). The CLS row is zero everywhere except column 0,
-    which holds a learnable token. Positional embedding shape is (1, P_h+1, P_h, d1, d2, d3).
+    which holds a learnable token. Positional embedding shape is (1, P_h+1, P_w, d1, d2, d3).
 
     Parameters
     ----------
@@ -47,7 +47,16 @@ class VisionTransformer(nn.Module):
     tensor_method_mlp : Tuple[str,str], default ('tle','tle')
     tensor_method : {'tle','tdle','tp'}, default 'tle'
     tdle_level : int, default 3
-    reduce_level : Tuple[int,int,int], default (0,0,0)
+    rank_patch : Optional[Sequence[int]], default None
+        Rank used only when patch tensor_method == 'tp'. If None, defaults to (*in_modes, *out_modes).
+    rank_attn : Optional[Sequence[int]], default None
+        Rank used only when attention tensor_method == 'tp'. If None, defaults to (*in_modes, *out_modes).
+    rank_mlp1 : Optional[Sequence[int]], default None
+        Rank used only when MLP-1 tensor_method == 'tp'. If None, defaults to (*embed_dim, *mlp_dim).
+    rank_mlp2 : Optional[Sequence[int]], default None
+        Rank used only when MLP-2 tensor_method == 'tp'. If None, defaults to (*mlp_dim, *embed_dim).
+    rank_classifier : Optional[Sequence[int]], default None
+        Rank used only for TP classifier mapping embed_dim → (num_classes,). If None, defaults to (*embed_dim, num_classes).
     """
 
     def __init__(
@@ -67,7 +76,11 @@ class VisionTransformer(nn.Module):
         tensor_method_mlp: Tuple[str, str] = ("tle", "tle"),
         tensor_method: str = "tle",
         tdle_level: int = 3,
-        reduce_level: Tuple[int, int, int] = (0, 0, 0),
+        rank_patch: Optional[Sequence[int]] = None,
+        rank_attn: Optional[Sequence[int]] = None,
+        rank_mlp1: Optional[Sequence[int]] = None,
+        rank_mlp2: Optional[Sequence[int]] = None,
+        rank_classifier: Optional[Sequence[int]] = None,
     ) -> None:
         super().__init__()
 
@@ -90,6 +103,11 @@ class VisionTransformer(nn.Module):
         self.embed_dim = embed_dim
         self.num_classes = int(num_classes)
 
+        def resolve_tp_rank(in_modes: Tuple[int, ...], out_modes: Tuple[int, ...], r: Optional[Sequence[int]]) -> Tuple[int, ...]:
+            if r is not None:
+                return tuple(int(x) for x in r)
+            return tuple(int(m) for m in (*in_modes, *out_modes))
+
         self.patch_embedding = PatchEmbedding(
             input_size=input_size,
             patch_size=patch_size,
@@ -98,11 +116,11 @@ class VisionTransformer(nn.Module):
             ignore_modes=ignore_modes,
             tensor_method=tensor_method,
             tdle_level=tdle_level,
-            reduce_level=reduce_level,
+            rank=rank_patch,
         )
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, 1, *embed_dim))
-        self.pos_embedding = nn.Parameter(torch.zeros(1, P_h + 1, P_h, *embed_dim))
+        self.pos_embedding = nn.Parameter(torch.zeros(1, P_h + 1, P_w, *embed_dim))
 
         self.transformer = nn.ModuleList(
             [
@@ -120,17 +138,23 @@ class VisionTransformer(nn.Module):
                     tensor_method_mlp=tensor_method_mlp,
                     tensor_method=tensor_method,
                     tdle_level=tdle_level,
-                    reduce_level=reduce_level,
+                    rank_attn=rank_attn,
+                    rank_mlp1=rank_mlp1,
+                    rank_mlp2=rank_mlp2,
                 )
                 for _ in range(num_layers)
             ]
         )
 
         self.norm = nn.LayerNorm(embed_dim)
+
+        clf_rank = resolve_tp_rank(embed_dim, (num_classes,), rank_classifier)
+        if len(clf_rank) != len(embed_dim) + 1 or any(int(v) <= 0 for v in clf_rank):
+            raise ValueError(f"rank_classifier must be length {len(embed_dim)+1} with positive entries, got {clf_rank}")
         self.classifier = TP(
             input_size=(B, *embed_dim),
             output_size=(num_classes,),
-            rank=tuple(x - y for x, y in zip(embed_dim + (num_classes,), reduce_level + (0,))),
+            rank=clf_rank,
             ignore_modes=(0,),
             bias=bias,
         )
@@ -191,8 +215,8 @@ def _flops_tensor_layer_instance(
     B_eff = B * P1 * P2
 
     if layer.__class__.__name__ == "TP":
-        out_size = tuple(int(v) for v in layer.output_size)  # type: ignore[attr-defined]
-        rank = tuple(int(v) for v in layer.rank)             # type: ignore[attr-defined]
+        out_size = tuple(int(v) for v in layer.output_size)
+        rank = tuple(int(v) for v in layer.rank)
         parts = estimate_tp_flops(
             input_size=tensor_in,
             output_size=out_size,
@@ -203,14 +227,14 @@ def _flops_tensor_layer_instance(
         return int(parts["total"])
 
     if layer.__class__.__name__ == "TLE":
-        out_rank = tuple(int(v) for v in layer.rank)         # type: ignore[attr-defined]
+        out_rank = tuple(int(v) for v in layer.rank)
         proj = tle_input_projector_flops(tensor_in, out_rank, ignore_modes)
         b = bias_add_flops(B_eff, out_rank) if _has_bias(layer) else 0
         return int(proj + b)
 
     if layer.__class__.__name__ == "TDLE":
         r = _tdle_level(layer)
-        out_rank = tuple(int(v) for v in layer.layers[0].rank)  # type: ignore[attr-defined]
+        out_rank = tuple(int(v) for v in layer.layers[0].rank)
         proj = tle_input_projector_flops(tensor_in, out_rank, ignore_modes)
         b = bias_add_flops(B_eff, out_rank) if _has_bias(layer) else 0
         per = int(proj + b)
@@ -237,10 +261,12 @@ def analytic_tensor_vit_flops(model: VisionTransformer) -> Tuple[float, dict]:
     pe_ignore = pe.ignore_modes
     tensor_in_pe = (B, P_h, P_w, C, ps, ps)
     if pe.tensor_method == "tp":
+        out_size = pe.embed_dim
+        rank = tuple(int(v) for v in getattr(pe.tensor_layer, "rank"))
         pe_flops = estimate_tp_flops(
             input_size=tensor_in_pe,
-            output_size=pe.embed_dim,
-            rank=(C, ps, ps) + tuple(pe.embed_dim),
+            output_size=out_size,
+            rank=rank,
             ignore_modes=pe_ignore,
             include_bias=_has_bias(pe.tensor_layer),
         )["total"]

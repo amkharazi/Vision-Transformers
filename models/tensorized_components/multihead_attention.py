@@ -27,20 +27,20 @@ class MultiHeadAttention(nn.Module):
     """
     Tensorized multi-head attention on factorized patch embeddings.
 
-    Expects `x` of shape `(B, P_h + cls_tokens, P_w, d1, d2, d3)`. Q/K/V are produced by a
+    Expects x of shape (B, P_h + cls_tokens, P_w, d1, d2, d3). Q/K/V are produced by a
     tensorized layer (TLE/TDLE/TP), split into heads along each mode, attention is applied
-    over the `P_h * P_w` spatial sequence, then optionally projected back via a tensorized layer.
+    over the P_h * P_w spatial sequence, then optionally projected back via a tensorized layer.
 
     Parameters
     ----------
     input_size : Sequence[int]
-        `(B, C, H, W)` of the original image; used to derive `(P_h, P_w)`.
+        (B, C, H, W) of the original image; used to derive (P_h, P_w).
     patch_size : int
         Patch size (H and W must be divisible by this).
     embed_dim : Tuple[int, int, int]
-        Per-mode dims `(d1, d2, d3)` before reduction.
+        Per-mode dims (d1, d2, d3).
     num_heads : Tuple[int, int, int]
-        Heads per mode `(h1, h2, h3)`. Each effective dim must be divisible by its heads.
+        Heads per mode (h1, h2, h3). Each embed_dim entry must be divisible by its heads.
     bias : bool, default True
         Whether TLE/TDLE/TP include bias.
     out_embed : bool, default True
@@ -51,8 +51,9 @@ class MultiHeadAttention(nn.Module):
         Tensor mapping used for Q/K/V/(out).
     tdle_level : int, default 3
         Number of summed TLE blocks inside TDLE.
-    reduce_level : Tuple[int,int,int], default (0,0,0)
-        Effective dims = embed_dim - reduce_level.
+    rank : Optional[Sequence[int]], default None
+        Rank vector used only when tensor_method == 'tp'. If None, defaults to concatenating
+        input modes and output modes as rank = (*in_modes, *out_modes).
     cls_tokens : int, default 1
         Special rows prepended along P_h (e.g., CLS).
     attn_dropout : float, default 0.0
@@ -60,7 +61,7 @@ class MultiHeadAttention(nn.Module):
     proj_dropout : float, default 0.0
         Dropout after output projection.
     return_attn : bool, default False
-        If True, returns `(y, attn)` where `attn` is (B, h1, h2, h3, seq, seq).
+        If True, returns (y, attn) where attn is (B, h1, h2, h3, seq, seq).
     """
 
     def __init__(
@@ -74,7 +75,7 @@ class MultiHeadAttention(nn.Module):
         ignore_modes: Iterable[int] = (0, 1, 2),
         tensor_method: str = "tle",
         tdle_level: int = 3,
-        reduce_level: Tuple[int, int, int] = (0, 0, 0),
+        rank: Optional[Sequence[int]] = None,
         cls_tokens: int = 1,
         attn_dropout: float = 0.0,
         proj_dropout: float = 0.0,
@@ -84,8 +85,6 @@ class MultiHeadAttention(nn.Module):
 
         if not (isinstance(embed_dim, tuple) and len(embed_dim) == 3):
             raise TypeError(f"embed_dim must be a 3-tuple, got {embed_dim}")
-        if not (isinstance(reduce_level, tuple) and len(reduce_level) == 3):
-            raise TypeError(f"reduce_level must be a 3-tuple, got {reduce_level}")
         if tensor_method not in {"tle", "tdle", "tp"}:
             raise ValueError(f"Invalid tensor_method '{tensor_method}'")
         if not (isinstance(input_size, Sequence) and len(input_size) == 4):
@@ -98,19 +97,17 @@ class MultiHeadAttention(nn.Module):
         B, C, H, W = map(int, input_size)
         if H % patch_size or W % patch_size:
             raise ValueError(f"H and W must be divisible by patch_size={patch_size}")
-
-        eff_dim = tuple(e - r for e, r in zip(embed_dim, reduce_level))
-        if any(d <= 0 for d in eff_dim):
-            raise ValueError(f"embed_dim - reduce_level must be > 0, got {eff_dim}")
+        if any(d <= 0 for d in embed_dim):
+            raise ValueError(f"embed_dim entries must be > 0, got {embed_dim}")
 
         h1, h2, h3 = num_heads
-        if eff_dim[0] % h1 or eff_dim[1] % h2 or eff_dim[2] % h3:
-            raise ValueError(f"Each dim must be divisible by heads: eff_dim={eff_dim}, heads={num_heads}")
+        if embed_dim[0] % h1 or embed_dim[1] % h2 or embed_dim[2] % h3:
+            raise ValueError(f"Each dim must be divisible by heads: embed_dim={embed_dim}, heads={num_heads}")
 
         self.input_size = (B, C, H, W)
         self.patch_size = int(patch_size)
-        self.embed_dim = eff_dim
-        self.num_heads = (h1, h2, h3)
+        self.embed_dim = tuple(int(d) for d in embed_dim)
+        self.num_heads = (int(h1), int(h2), int(h3))
         self.bias = bool(bias)
         self.out_embed = bool(out_embed)
         self.ignore_modes = tuple(ignore_modes)
@@ -127,7 +124,15 @@ class MultiHeadAttention(nn.Module):
             * (self.embed_dim[2] // h3)
         ) ** -0.5
 
-        def make_layer(method: str) -> nn.Module:
+        def resolve_tp_rank(r: Optional[Sequence[int]]) -> Tuple[int, ...]:
+            if r is not None:
+                r = tuple(int(x) for x in r)
+                return r
+            in_modes = self.tensor_input_size[3:]
+            out_modes = self.embed_dim
+            return tuple(int(m) for m in (*in_modes, *out_modes))
+
+        def make_layer(method: str, rnk: Optional[Sequence[int]]) -> nn.Module:
             if method == "tdle":
                 return TDLE(
                     input_size=self.tensor_input_size,
@@ -143,19 +148,19 @@ class MultiHeadAttention(nn.Module):
                     ignore_modes=self.ignore_modes,
                     bias=self.bias,
                 )
-            rank = self.tensor_input_size[-3:] + self.embed_dim
+            tp_rank = resolve_tp_rank(rnk)
             return TP(
                 input_size=self.tensor_input_size,
                 output_size=self.embed_dim,
-                rank=rank,
+                rank=tp_rank,
                 ignore_modes=self.ignore_modes,
                 bias=self.bias,
             )
 
-        self.tensor_layer_Q = make_layer(tensor_method)
-        self.tensor_layer_K = make_layer(tensor_method)
-        self.tensor_layer_V = make_layer(tensor_method)
-        self.tensor_layer_out = make_layer(tensor_method) if self.out_embed else None
+        self.tensor_layer_Q = make_layer(tensor_method, rank)
+        self.tensor_layer_K = make_layer(tensor_method, rank)
+        self.tensor_layer_V = make_layer(tensor_method, rank)
+        self.tensor_layer_out = make_layer(tensor_method, rank) if self.out_embed else None
 
         self.attn_drop = nn.Dropout(attn_dropout) if attn_dropout > 0 else nn.Identity()
         self.proj_drop = nn.Dropout(proj_dropout) if proj_dropout > 0 else nn.Identity()
@@ -169,14 +174,14 @@ class MultiHeadAttention(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            Input of shape `(B, P_h + cls_tokens, P_w, d1, d2, d3)`.
+            Input of shape (B, P_h + cls_tokens, P_w, d1, d2, d3).
         attn_mask : torch.Tensor | None
-            Broadcastable to `(B, h1, h2, h3, seq, seq)` with `seq = (P_h + cls_tokens) * P_w`.
+            Broadcastable to (B, h1, h2, h3, seq, seq) with seq = (P_h + cls_tokens) * P_w.
 
         Returns
         -------
         torch.Tensor or tuple[torch.Tensor, torch.Tensor]
-            Output `y` of shape `(B, P_h + cls_tokens, P_w, d1, d2, d3)`, and optionally attention.
+            Output y of shape (B, P_h + cls_tokens, P_w, d1, d2, d3), and optionally attention.
         """
         if x.dim() != 6:
             raise ValueError(f"Expected 6D input (B, P_h+cls_tokens, P_w, d1, d2, d3), got {x.shape}")
@@ -230,20 +235,8 @@ def _tensor_layer_flops(
     bias: bool,
     tdle_level: int,
 ) -> int:
-    """
-    Analytic FLOPs for a single tensor layer matching the configured method.
-    """
     B, P1, P2, d1, d2, d3 = tensor_in
     B_eff = B * P1 * P2
-
-    if method == "tp":
-        rank = (d1 * 0 + 0,)  # placeholder; compute properly below
-        rank = (  # input ranks = original image C,H,W; output ranks = embed_dim
-            # In TP here we used rank as (C, H, W, d1, d2, d3) when creating the module.
-            # We do not have C,H,W here; FLOPs estimator only needs input/output ranks:
-            # use the module’s internal rank at call site (we’ll pass it via estimate_tp_flops).
-        )
-        raise RuntimeError("TP FLOPs for tensor attention are computed via estimate_tp_flops in the caller.")
 
     if method == "tle":
         proj = tle_input_projector_flops(tensor_in, embed_dim, ignore_modes)
@@ -268,19 +261,16 @@ def _sanity_check_once(
     tensor_method: str = "tle",
     ignore_modes: Iterable[int] = (0, 1, 2),
     tdle_level: int = 2,
-    reduce_level: Tuple[int, int, int] = (0, 0, 0),
     bias: bool = True,
     out_embed: bool = True,
     return_attn: bool = False,
     include_softmax: bool = False,
+    rank: Optional[Sequence[int]] = None,
     device: Optional[torch.device] = None,
     dtype: torch.dtype = torch.float32,
     warmup: int = 2,
     iters: int = 5,
 ) -> None:
-    """
-    Run shape, parameter-count (total and tensorized-only), timing, and analytic FLOPs check.
-    """
     device = device if device is not None else torch.device("cpu")
 
     attn = MultiHeadAttention(
@@ -293,7 +283,7 @@ def _sanity_check_once(
         ignore_modes=ignore_modes,
         tensor_method=tensor_method,
         tdle_level=tdle_level,
-        reduce_level=reduce_level,
+        rank=rank,
         cls_tokens=1,
         attn_dropout=0.0,
         proj_dropout=0.0,
@@ -352,11 +342,14 @@ def _sanity_check_once(
     d_per_head = xh * yh * zh
 
     if tensor_method == "tp":
-        rank = embed_dim + embed_dim
+        if rank is None:
+            in_modes = embed_dim
+            out_modes = embed_dim
+            rank = tuple(int(m) for m in (*in_modes, *out_modes))
         fl_q = estimate_tp_flops(
             input_size=(B, P_h + 1, P_w, *embed_dim),
             output_size=embed_dim,
-            rank=rank,
+            rank=tuple(int(r) for r in rank),
             ignore_modes=ignore_modes,
             include_bias=bias,
         )["total"]
@@ -365,7 +358,7 @@ def _sanity_check_once(
         fl_out = estimate_tp_flops(
             input_size=(B, P_h + 1, P_w, *embed_dim),
             output_size=embed_dim,
-            rank=rank,
+            rank=tuple(int(r) for r in rank),
             ignore_modes=ignore_modes,
             include_bias=bias,
         )["total"] if out_embed else 0
@@ -400,7 +393,6 @@ def sanity_check() -> None:
     """
     B, C, H, W = 256, 3, 32, 32
     ps = 8
-    P_h, P_w = H // ps, W // ps
     embed_dim = (4, 4, 4)
     heads = (2, 2, 2)
     ignore = (0, 1, 2)
