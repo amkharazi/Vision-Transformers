@@ -30,6 +30,3 @@ python test.py  --run_id ID015_vit_tiny_tensorized_test_oxford_pets --model_type
 # python train.py --run_id ID016_vit_tiny_tensorized_test_stl10 --model_type tensorized --dataset stl10 --batch_size 256 --epochs 600 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 6 --num_heads 2 2 2 --embed_dim 4 4 4 --mlp_dim 4 4 8 --tensor_method_mlp tle tle --tensor_method tle
 # python test.py  --run_id ID016_vit_tiny_tensorized_test_stl10 --model_type tensorized --dataset stl10 --batch_size 256 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 6 --num_heads 2 2 2 --embed_dim 4 4 4 --mlp_dim 4 4 8 --tensor_method_mlp tle tle --tensor_method tle
 
-# # ID017 - Food101 (101 classes)
-# python train.py --run_id ID017_vit_tiny_tensorized_test_food101 --model_type tensorized --dataset food101 --batch_size 256 --epochs 600 --image_size 32 --patch_size 4 --num_classes 101 --num_layers 6 --num_heads 2 2 2 --embed_dim 4 4 4 --mlp_dim 4 4 8 --tensor_method_mlp tle tle --tensor_method tle
-# python test.py  --run_id ID017_vit_tiny_tensorized_test_food101 --model_type tensorized --dataset food101 --batch_size 256 --image_size 32 --patch_size 4 --num_classes 101 --num_layers 6 --num_heads 2 2 2 --embed_dim 4 4 4 --mlp_dim 4 4 8 --tensor_method_mlp tle tle --tensor_method tle

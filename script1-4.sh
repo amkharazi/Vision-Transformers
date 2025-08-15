@@ -30,6 +30,3 @@ python test.py  --run_id ID004_vit_tiny_test_tinyimagenet --model_type original 
 # python train.py --run_id ID008_vit_tiny_test_stl10 --model_type original --dataset stl10 --batch_size 256 --epochs 600 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 6 --num_heads_original 8 --embed_dim_original 64 --mlp_dim_original 128
 # python test.py  --run_id ID008_vit_tiny_test_stl10 --model_type original --dataset stl10 --batch_size 256 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 6 --num_heads_original 8 --embed_dim_original 64 --mlp_dim_original 128
 
-# # ID009 - Food101 (101 classes)
-# python train.py --run_id ID009_vit_tiny_test_food101 --model_type original --dataset food101 --batch_size 256 --epochs 600 --image_size 32 --patch_size 4 --num_classes 101 --num_layers 6 --num_heads_original 8 --embed_dim_original 64 --mlp_dim_original 128
-# python test.py  --run_id ID009_vit_tiny_test_food101 --model_type original --dataset food101 --batch_size 256 --image_size 32 --patch_size 4 --num_classes 101 --num_layers 6 --num_heads_original 8 --embed_dim_original 64 --mlp_dim_original 128
