@@ -3,8 +3,8 @@
 # python test.py  --run_id ID009_vit_small_tensorized_test_mnist --model_type tensorized --dataset mnist --batch_size 256 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 9 --num_heads 3 2 2 --embed_dim 3 8 8 --mlp_dim 6 8 8 --tensor_method_mlp tle tle --tensor_method tle
 
 # # ID010 - CIFAR-10 (10 classes)
-# python train.py --run_id ID010_vit_small_tensorized_test_cifar10 --model_type tensorized --dataset cifar10 --batch_size 256 --epochs 600 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 9 --num_heads 3 2 2 --embed_dim 3 8 8 --mlp_dim 6 8 8 --tensor_method_mlp tle tle --tensor_method tle
-# python test.py  --run_id ID010_vit_small_tensorized_test_cifar10 --model_type tensorized --dataset cifar10 --batch_size 256 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 9 --num_heads 3 2 2 --embed_dim 3 8 8 --mlp_dim 6 8 8 --tensor_method_mlp tle tle --tensor_method tle
+python train.py --run_id ID010_vit_small_tensorized_test_cifar10 --model_type tensorized --dataset cifar10 --batch_size 256 --epochs 600 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 9 --num_heads 3 2 2 --embed_dim 3 8 8 --mlp_dim 6 8 8 --tensor_method_mlp tle tle --tensor_method tle
+python test.py  --run_id ID010_vit_small_tensorized_test_cifar10 --model_type tensorized --dataset cifar10 --batch_size 256 --image_size 32 --patch_size 4 --num_classes 10 --num_layers 9 --num_heads 3 2 2 --embed_dim 3 8 8 --mlp_dim 6 8 8 --tensor_method_mlp tle tle --tensor_method tle
 
 # # ID011 - CIFAR-100 (100 classes)
 # python train.py --run_id ID011_vit_small_tensorized_test_cifar100 --model_type tensorized --dataset cifar100 --batch_size 256 --epochs 600 --image_size 32 --patch_size 4 --num_classes 100 --num_layers 9 --num_heads 3 2 2 --embed_dim 3 8 8 --mlp_dim 6 8 8 --tensor_method_mlp tle tle --tensor_method tle

@@ -1,0 +1,4 @@
+tensorized | epoch 1 | top1=0.0898 top2=0.1811 top3=0.2777 top4=0.3759 top5=0.4757 loss=0.009582 time=208.91s
+tensorized | epoch 2 | top1=0.1321 top2=0.2548 top3=0.3625 top4=0.4681 top5=0.5701 loss=0.008877 time=212.68s
+tensorized | epoch 3 | top1=0.1675 top2=0.3108 top3=0.4303 top4=0.5400 top5=0.6364 loss=0.008586 time=211.04s
+tensorized | epoch 4 | top1=0.2031 top2=0.3630 top3=0.4864 top4=0.5898 top5=0.6793 loss=0.008253 time=211.03s
