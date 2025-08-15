@@ -262,7 +262,7 @@ def _sanity_check_once(
     tensor_method: str = "tle",
     tensor_method_mlp: Tuple[str, str] = ("tle", "tle"),
     ignore_modes: Iterable[int] = (0, 1, 2),
-    tdle_level: int = 2,
+    tdle_level: int = 3,
     bias: bool = True,
     out_embed: bool = True,
     include_softmax: bool = False,

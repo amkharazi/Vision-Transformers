@@ -260,7 +260,7 @@ def _sanity_check_once(
     num_heads: Tuple[int, int, int],
     tensor_method: str = "tle",
     ignore_modes: Iterable[int] = (0, 1, 2),
-    tdle_level: int = 2,
+    tdle_level: int = 3,
     bias: bool = True,
     out_embed: bool = True,
     return_attn: bool = False,
