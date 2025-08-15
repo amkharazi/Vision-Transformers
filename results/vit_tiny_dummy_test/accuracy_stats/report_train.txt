@@ -1,2 +1,0 @@
-original | epoch 1 | top1=0.0908 top2=0.1861 top3=0.2843 top4=0.3842 top5=0.4844 loss=0.009371 time=206.31s
-original | epoch 2 | top1=0.2020 top2=0.3359 top3=0.4502 top4=0.5526 top5=0.6435 loss=0.008272 time=203.43s

@@ -1,1 +1,0 @@
-original | test | top1=0.6949 top2=0.8383 top3=0.9015 top4=0.9364 top5=0.9577 loss=0.003940 time=4.17s
