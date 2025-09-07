@@ -287,6 +287,7 @@ def main():
     p.add_argument('--train_size', type=str, default='default')
     p.add_argument('--num_classes', type=int, default=10)
     p.add_argument('--seed', type=int, default=None)
+    p.add_argument('--save_rate', type=int, default=5)
 
     p.add_argument('--patch_size', type=int, default=4)
     p.add_argument('--num_layers', type=int, default=6)
@@ -387,7 +388,7 @@ def main():
             best_top1 = top1
             torch.save(model.state_dict(), os.path.join(model_dir, 'Best_Train_Model.pth'))
 
-        if epoch % 5 == 0:
+        if epoch % args.save_rate == 0:
             torch.save(model.state_dict(), os.path.join(model_dir, f'Model_epoch_{epoch}.pth'))
 
         with open(os.path.join(acc_dir, 'report_train.txt'), 'a') as f:
