@@ -182,7 +182,7 @@ def get_train_loader(dataset: str, data_root: str, batch_size: int, image_size: 
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        loader, _ = get_tinyimagenet_dataloaders(data_root, transform_train, transform_val, transform_val, batch_size, image_size, repeat_count=5)[:2]
+        loader, _ = get_tinyimagenet_dataloaders(data_root, transform_train, transform_val, transform_val, batch_size, image_size, repeat_count=1)[:2]
         return loader
     if dataset == 'fashionmnist':
         transform_train = transforms.Compose([
