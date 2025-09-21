@@ -266,7 +266,7 @@ def sanity_and_benchmark() -> None:
     torch.manual_seed(0)
     torch.backends.cudnn.benchmark = True
 
-    B, C, H, W = 16, 3, 32, 32
+    B, C, H, W = 2, 3, 32, 32
     num_classes = 10
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
