@@ -178,41 +178,6 @@ def main():
     parser.add_argument("--save_rate", type=int, default=5)
     args = parser.parse_args()
 
-    import math
-    from pprint import pformat
-
-    print("=== RAW ARGS ===")
-    print(pformat(vars(args)))
-
-    expect_tuple = args.model_type == "tensorized"
-
-    embed_dim_t = tuple(map(int, args.embed_dim))
-    num_heads_t = tuple(map(int, args.num_heads))
-    mlp_dim_t = tuple(map(int, args.mlp_dim))
-
-    print("\n=== TUPLE ARGS ===")
-    print(f"embed_dim_t = {embed_dim_t}")
-    print(f"num_heads_t = {num_heads_t}")
-    print(f"mlp_dim_t   = {mlp_dim_t}")
-    print(f"tensor_type = {tuple(args.tensor_type) if expect_tuple else None}")
-    print(
-        f"ignore_modes= {tuple(map(int,args.ignore_modes)) if args.ignore_modes else ((0,1,2) if expect_tuple else None)}"
-    )
-
-    if args.model_type == "original":
-        embed_dim_s = math.prod(embed_dim_t)
-        num_heads_s = math.prod(num_heads_t)
-        mlp_dim_s = math.prod(mlp_dim_t)
-        print("\n=== SCALARS FED TO ORIGINAL VIT ===")
-        print(f"embed_dim = {embed_dim_s}  (product of {embed_dim_t})")
-        print(f"num_heads = {num_heads_s}  (product of {num_heads_t})")
-        print(f"mlp_dim   = {mlp_dim_s}    (product of {mlp_dim_t})")
-    else:
-        print("\n=== VALUES FED TO TENSORIZED VIT ===")
-        print(f"embed_dim = {embed_dim_t}")
-        print(f"num_heads = {num_heads_t}")
-        print(f"mlp_dim   = {mlp_dim_t}")
-
     device = (
         args.device if torch.cuda.is_available() and args.device == "cuda" else "cpu"
     )

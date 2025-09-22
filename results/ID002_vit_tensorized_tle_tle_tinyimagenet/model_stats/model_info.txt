@@ -1,0 +1,7 @@
+parameters=28858894
+dataset=tinyimagenet
+model_type=tensorized
+embed_dim=(16, 16, 3)
+num_heads=(2, 2, 3)
+mlp_dim=(32, 32, 3)
+num_layers=12
