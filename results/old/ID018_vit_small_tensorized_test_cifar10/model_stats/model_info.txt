@@ -1,5 +1,0 @@
-model_type=tensorized
-num_parameters_total=83242
-num_parameters_trainable=83242
-dataset=cifar10
-seed=None
