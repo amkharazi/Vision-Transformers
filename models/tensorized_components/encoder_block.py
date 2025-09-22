@@ -5,7 +5,7 @@ import torch.nn as nn
 from models.tensorized_components.multihead_attention import MultiHeadAttention as MHA
 from einops import rearrange
 from tensorized_layers.TLE import TLE
-from tensorized_layers.TLE import TDLE
+from tensorized_layers.TDLE import TDLE
 from tensorized_layers.TP import TP
 
 

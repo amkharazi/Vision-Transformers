@@ -19,7 +19,7 @@ class PatchEmbedding(nn.Module):
         bias=True,
         device="cuda",
         ignore_modes=(0, 1, 2),
-        tensor_layer_type="tle",
+        tensor_type="tle",
         tdle_level=3,
     ):
         super(PatchEmbedding, self).__init__()
@@ -39,7 +39,7 @@ class PatchEmbedding(nn.Module):
             self.input_size[1],
         )
 
-        if tensor_layer_type == "tle":
+        if tensor_type == "tle":
             self.tensor_layer = TLE(
                 input_size=self.tensor_input_size,
                 rank=self.embed_dim,
@@ -47,7 +47,7 @@ class PatchEmbedding(nn.Module):
                 bias=self.bias,
                 device=self.device,
             )
-        elif tensor_layer_type == "tp":
+        elif tensor_type == "tp":
             self.tensor_layer = TP(
                 input_size=self.tensor_input_size,
                 output=self.embed_dim,
