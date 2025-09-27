@@ -8,7 +8,9 @@ import math
 import argparse
 import torch
 import torchvision.transforms as transforms
+from torchvision.transforms import RandAugment, RandomErasing
 from torch import nn
+import numpy as np
 
 from utils.accuracy_measures import topk_accuracy
 from utils.tinyimagenet_loaders import get_tinyimagenet_dataloaders
@@ -23,34 +25,76 @@ from models.vit_original import VisionTransformer as VIT
 from models.vit_tensorized import VisionTransformer as VALTT
 
 
+def get_cosine_schedule_with_warmup(optimizer, num_warmup_epochs, num_training_epochs):
+    def lr_lambda(epoch):
+        if epoch < num_warmup_epochs:
+            return float(epoch) / float(max(1, num_warmup_epochs))
+        return 0.5 * (
+            1.0
+            + np.cos(
+                np.pi
+                * (epoch - num_warmup_epochs)
+                / max(1, (num_training_epochs - num_warmup_epochs))
+            )
+        )
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+
+def mixup_data(x, y, alpha=0.8):
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1.0
+    bs = x.size(0)
+    index = torch.randperm(bs).to(x.device)
+    mixed_x = lam * x + (1 - lam) * x[index]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, float(lam)
+
+
 def to_tuple_int(vals):
     return tuple(int(v) for v in vals)
 
 
-def build_transforms(image_size, to3=False):
-    base = [
-        transforms.Resize((image_size, image_size)),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-    ]
-    if to3:
-        base = [transforms.Grayscale(num_output_channels=3)] + base
+def build_transforms(image_size, gray_scale=False):
     aug = [
-        transforms.RandomHorizontalFlip(),
-        transforms.Resize((image_size, image_size)),
-        transforms.RandomCrop(image_size, padding=5),
-        transforms.RandomRotation(10),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                RandAugment(),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+                transforms.RandomRotation(10),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                RandomErasing(p=0.25),
     ]
-    if to3:
-        aug = [transforms.Grayscale(num_output_channels=3)] + aug
+    base = [
+                transforms.Resize((image_size, image_size)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+    ]
+    if gray_scale:
+        aug = [
+                transforms.Resize((image_size, image_size)),
+                transforms.Grayscale(num_output_channels=3),
+                RandAugment(),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                RandomErasing(p=0.25),
+        ]
+        base =  [
+                transforms.Resize((image_size, image_size)),
+                transforms.Grayscale(num_output_channels=3),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+         ]
     return transforms.Compose(aug), transforms.Compose(base), transforms.Compose(base)
 
 
-def get_loaders_and_meta(dataset, data_dir, batch_size, image_size):
+def get_loaders_and_meta(dataset, data_dir, batch_size, image_size, train_size, repeat_count):
     if dataset == "tinyimagenet":
-        ttr, tv, tt = build_transforms(image_size, to3=False)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=False)
         train_loader, test_loader, _ = get_tinyimagenet_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -58,76 +102,92 @@ def get_loaders_and_meta(dataset, data_dir, batch_size, image_size):
             transform_test=tt,
             batch_size=batch_size,
             image_size=image_size,
+            repeat_count=repeat_count,
+            train_size=train_size,
         )
         return test_loader, 200
     if dataset == "cifar10":
-        _, _, tt = build_transforms(image_size, to3=False)
+        _, _, tt = build_transforms(image_size, gray_scale=False)
         _, test_loader = get_cifar10_dataloaders(
             data_dir=data_dir,
             transform_train=tt,
             transform_test=tt,
             batch_size=batch_size,
             image_size=image_size,
+            repeat_count=repeat_count,
+            train_size=train_size,
         )
         return test_loader, 10
     if dataset == "cifar100":
-        _, _, tt = build_transforms(image_size, to3=False)
+        _, _, tt = build_transforms(image_size, gray_scale=False)
         _, test_loader = get_cifar100_dataloaders(
             data_dir=data_dir,
             transform_train=tt,
             transform_test=tt,
             batch_size=batch_size,
             image_size=image_size,
+            repeat_count=repeat_count,
+            train_size=train_size,
         )
         return test_loader, 100
     if dataset == "mnist":
-        _, _, tt = build_transforms(image_size, to3=True)
+        _, _, tt = build_transforms(image_size, gray_scale=True)
         _, test_loader = get_mnist_dataloaders(
             data_dir=data_dir,
             transform_train=tt,
             transform_test=tt,
             batch_size=batch_size,
             image_size=image_size,
+            repeat_count=repeat_count,
+            train_size=train_size,
         )
         return test_loader, 10
     if dataset == "fashionmnist":
-        _, _, tt = build_transforms(image_size, to3=True)
+        _, _, tt = build_transforms(image_size, gray_scale=True)
         _, test_loader = get_fashionmnist_dataloaders(
             data_dir=data_dir,
             transform_train=tt,
             transform_test=tt,
             batch_size=batch_size,
             image_size=image_size,
+            repeat_count=repeat_count,
+            train_size=train_size,
         )
         return test_loader, 10
     if dataset == "flowers102":
-        _, _, tt = build_transforms(image_size, to3=False)
+        _, _, tt = build_transforms(image_size, gray_scale=False)
         _, test_loader = get_flowers102_dataloaders(
             data_dir=data_dir,
             transform_train=tt,
             transform_test=tt,
             batch_size=batch_size,
             image_size=image_size,
+            repeat_count=repeat_count,
+            train_size=train_size,
         )
         return test_loader, 102
     if dataset == "oxford_pets":
-        _, _, tt = build_transforms(image_size, to3=False)
+        _, _, tt = build_transforms(image_size, gray_scale=False)
         _, test_loader = get_oxford_pets_dataloaders(
             data_dir=data_dir,
             transform_train=tt,
             transform_test=tt,
             batch_size=batch_size,
             image_size=image_size,
+            repeat_count=repeat_count,
+            train_size=train_size,
         )
         return test_loader, 37
     if dataset == "stl10":
-        _, _, tt = build_transforms(image_size, to3=False)
+        _, _, tt = build_transforms(image_size, gray_scale=False)
         _, test_loader = get_stl10_classification_dataloaders(
             data_dir=data_dir,
             transform_train=tt,
             transform_test=tt,
             batch_size=batch_size,
             image_size=image_size,
+            repeat_count=repeat_count,
+            train_size=train_size,
         )
         return test_loader, 10
     raise ValueError("unsupported dataset")
@@ -240,13 +300,16 @@ def main():
     parser.add_argument("--save_rate", type=int, default=5)
     parser.add_argument("--weights_path", type=str, default=None)
     parser.add_argument("--eval_best", action="store_true")
+    parser.add_argument("--repeat_count", type=int, default=5)
+    parser.add_argument("--train_size", type=str, default="default")
+    
     args = parser.parse_args()
 
     device = (
         args.device if torch.cuda.is_available() and args.device == "cuda" else "cpu"
     )
     test_loader, inferred_classes = get_loaders_and_meta(
-        args.dataset, args.data_dir, args.batch_size, args.image_size
+        args.dataset, args.data_dir, args.batch_size, args.image_size, args.train_size, args.repeat_count
     )
     num_classes = args.num_classes if args.num_classes is not None else inferred_classes
     model = build_model(args, num_classes, device)
