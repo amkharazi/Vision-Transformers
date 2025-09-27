@@ -57,46 +57,49 @@ def mixup_data(x, y, alpha=0.8):
 def mixup_criterion(criterion, pred, y_a, y_b, lam):
     return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
 
+
 def to_tuple_int(vals):
     return tuple(int(v) for v in vals)
 
 
 def build_transforms(image_size, gray_scale=False):
     aug = [
-                RandAugment(),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
-                transforms.RandomRotation(10),
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                RandomErasing(p=0.25),
+        RandAugment(),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+        transforms.RandomRotation(10),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        RandomErasing(p=0.25),
     ]
     base = [
-                transforms.Resize((image_size, image_size)),
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        transforms.Resize((image_size, image_size)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ]
     if gray_scale:
         aug = [
-                transforms.Resize((image_size, image_size)),
-                transforms.Grayscale(num_output_channels=3),
-                RandAugment(),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                RandomErasing(p=0.25),
+            transforms.Resize((image_size, image_size)),
+            transforms.Grayscale(num_output_channels=3),
+            RandAugment(),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            RandomErasing(p=0.25),
         ]
-        base =  [
-                transforms.Resize((image_size, image_size)),
-                transforms.Grayscale(num_output_channels=3),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-         ]
+        base = [
+            transforms.Resize((image_size, image_size)),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
     return transforms.Compose(aug), transforms.Compose(base), transforms.Compose(base)
 
 
-def get_loaders_and_meta(dataset, data_dir, batch_size, image_size, train_size, repeat_count):
+def get_loaders_and_meta(
+    dataset, data_dir, batch_size, image_size, train_size, repeat_count
+):
     if dataset == "tinyimagenet":
         ttr, tv, tt = build_transforms(image_size, gray_scale=False)
         train_loader, test_loader, _ = get_tinyimagenet_dataloaders(
@@ -105,8 +108,8 @@ def get_loaders_and_meta(dataset, data_dir, batch_size, image_size, train_size, 
             transform_val=tv,
             transform_test=tt,
             batch_size=batch_size,
-            image_size=image_size, 
-            repeat_count=repeat_count, 
+            image_size=image_size,
+            repeat_count=repeat_count,
             train_size=train_size,
         )
         return train_loader, test_loader, 200
@@ -242,6 +245,7 @@ def main():
     parser.add_argument("--save_rate", type=int, default=5)
     parser.add_argument("--repeat_count", type=int, default=5)
     parser.add_argument("--train_size", type=str, default="default")
+    parser.add_argument("--warmup_epochs", type=int, default=10)
     args = parser.parse_args()
 
     device = (
@@ -249,7 +253,12 @@ def main():
     )
 
     train_loader, test_loader, inferred_classes = get_loaders_and_meta(
-        args.dataset, args.data_dir, args.batch_size, args.image_size, args.train_size, args.repeat_count
+        args.dataset,
+        args.data_dir,
+        args.batch_size,
+        args.image_size,
+        args.train_size,
+        args.repeat_count,
     )
     num_classes = args.num_classes if args.num_classes is not None else inferred_classes
 
@@ -304,11 +313,12 @@ def main():
 
     num_parameters = count_parameters(model)
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = optim.AdamW(
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+    )
     scheduler = get_cosine_schedule_with_warmup(
         optimizer, args.warmup_epochs, args.epochs
     )
-
 
     result_dir = os.path.join(args.results_dir, args.test_id)
     acc_dir = os.path.join(result_dir, "accuracy_stats")
