@@ -1,1 +1,0 @@
-best_train_epoch=100, best_top1=0.9799299836158752
