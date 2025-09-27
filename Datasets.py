@@ -1,28 +1,3 @@
-"""
-Dataset Downloader Utility
-
-This script downloads and stores datasets in the specified directory (`./datasets` by default).
-It supports downloading the following datasets:
-
-- CIFAR-10
-- CIFAR-100
-- MNIST
-- FashionMNIST
-- STL10
-- Oxford-IIIT Pet
-- Flowers102
-- TinyImageNet
-
-Usage:
-    python download_datasets.py --dataset <dataset_name> --save_dir <directory>
-
-If no dataset is specified, all datasets will be downloaded.
-
-Example:
-    python download_datasets.py --dataset cifar10
-    python download_datasets.py --save_dir ./datasets
-"""
-
 import os
 import argparse
 import torchvision.datasets as datasets
@@ -31,7 +6,6 @@ import zipfile
 
 
 def download_cifar10(save_dir: str) -> None:
-    """Download CIFAR-10 dataset."""
     print("Downloading CIFAR-10 dataset...")
     os.makedirs(save_dir, exist_ok=True)
     datasets.CIFAR10(root=save_dir, download=True)
@@ -39,7 +13,6 @@ def download_cifar10(save_dir: str) -> None:
 
 
 def download_cifar100(save_dir: str) -> None:
-    """Download CIFAR-100 dataset."""
     print("Downloading CIFAR-100 dataset...")
     os.makedirs(save_dir, exist_ok=True)
     datasets.CIFAR100(root=save_dir, download=True)
@@ -47,7 +20,6 @@ def download_cifar100(save_dir: str) -> None:
 
 
 def download_mnist(save_dir: str) -> None:
-    """Download MNIST dataset."""
     print("Downloading MNIST dataset...")
     os.makedirs(save_dir, exist_ok=True)
     datasets.MNIST(root=save_dir, download=True)
@@ -55,7 +27,6 @@ def download_mnist(save_dir: str) -> None:
 
 
 def download_fashion_mnist(save_dir: str) -> None:
-    """Download FashionMNIST dataset."""
     print("Downloading FashionMNIST dataset...")
     os.makedirs(save_dir, exist_ok=True)
     datasets.FashionMNIST(root=save_dir, download=True)
@@ -63,7 +34,6 @@ def download_fashion_mnist(save_dir: str) -> None:
 
 
 def download_stl10(save_dir: str) -> None:
-    """Download STL10 dataset (train, test, and unlabeled splits)."""
     print("Downloading STL10 dataset...")
     os.makedirs(save_dir, exist_ok=True)
     datasets.STL10(root=save_dir, split="train", download=True)
@@ -73,7 +43,6 @@ def download_stl10(save_dir: str) -> None:
 
 
 def download_oxford_pets(save_dir: str) -> None:
-    """Download Oxford-IIIT Pet dataset."""
     print("Downloading Oxford-IIIT Pet dataset...")
     os.makedirs(save_dir, exist_ok=True)
     datasets.OxfordIIITPet(root=save_dir, download=True)
@@ -81,7 +50,6 @@ def download_oxford_pets(save_dir: str) -> None:
 
 
 def download_flowers102(save_dir: str) -> None:
-    """Download Flowers102 dataset."""
     print("Downloading Flowers102 dataset...")
     os.makedirs(save_dir, exist_ok=True)
     datasets.Flowers102(root=save_dir, download=True)
@@ -89,10 +57,6 @@ def download_flowers102(save_dir: str) -> None:
 
 
 def download_tiny_imagenet(save_dir: str) -> None:
-    """
-    Download TinyImageNet dataset from the official Stanford CS231n link
-    and extract it to the specified directory.
-    """
     print("Downloading TinyImageNet dataset...")
     os.makedirs(save_dir, exist_ok=True)
     url = "http://cs231n.stanford.edu/tiny-imagenet-200.zip"
@@ -117,18 +81,6 @@ def download_tiny_imagenet(save_dir: str) -> None:
 
 
 def main(dataset: str = None, save_dir: str = None) -> None:
-    """
-    Download the specified dataset or all datasets if none is specified.
-
-    Parameters
-    ----------
-    dataset : str, optional
-        Name of the dataset to download.
-        If None, all supported datasets are downloaded.
-    save_dir : str, optional
-        Directory where the datasets will be stored.
-        Defaults to './datasets'.
-    """
     if save_dir is None:
         save_dir = "./datasets"
     if dataset is None:
@@ -139,7 +91,6 @@ def main(dataset: str = None, save_dir: str = None) -> None:
         download_stl10(save_dir)
         download_oxford_pets(save_dir)
         download_flowers102(save_dir)
-        download_food101(save_dir)
         download_tiny_imagenet(save_dir)
     elif dataset == "cifar10":
         download_cifar10(save_dir)
@@ -160,7 +111,7 @@ def main(dataset: str = None, save_dir: str = None) -> None:
     else:
         print(
             "Invalid dataset choice. Please choose from cifar10, cifar100, mnist, fashionmnist, "
-            "stl10, oxford_pets, flowers102, food101, or tiny_imagenet."
+            "stl10, oxford_pets, flowers102, or tiny_imagenet."
         )
 
 
@@ -179,7 +130,6 @@ if __name__ == "__main__":
             "stl10",
             "oxford_pets",
             "flowers102",
-            "food101",
         ],
         default=None,
         help="Choose which dataset to download. If None, all will be downloaded.",

@@ -1,5 +1,0 @@
-model_type=original
-num_parameters_total=208970
-num_parameters_trainable=208970
-dataset=cifar10
-seed=None
