@@ -25,6 +25,9 @@ from models.vit_original import VisionTransformer as VIT
 from models.vit_tensorized import VisionTransformer as VALTT
 
 
+def to_tuple_int(vals):
+    return tuple(int(v) for v in vals)
+
 def build_transforms(image_size, gray_scale=False):
     aug = [
         RandAugment(),
