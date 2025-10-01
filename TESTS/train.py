@@ -238,7 +238,7 @@ def main():
     parser.add_argument("--tensorized_mlp", type=int, choices=[0, 1], default=1)
     parser.add_argument("--tensor_type", nargs="+", default=["tle", "tle"])
     parser.add_argument("--tdle_level", type=int, default=3)
-    parser.add_argument("--lr", type=float, default=5e-4)
+    parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=0.05)
     parser.add_argument("--data_dir", type=str, default="../datasets")
     parser.add_argument("--results_dir", type=str, default="../results")
@@ -314,7 +314,7 @@ def main():
     num_parameters = count_parameters(model)
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
     optimizer = optim.AdamW(
-        model.parameters(), lr=args.lr, weight_decay=args.weight_decay, betas=(0.9,0.98)
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
     scheduler = get_cosine_schedule_with_warmup(
         optimizer, args.warmup_epochs, args.epochs
