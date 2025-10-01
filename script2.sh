@@ -7,6 +7,9 @@ python test.py  --test_id ID002_vit_tensorized_tle_tp_tinyimagenet_V2 --dataset 
 python train.py --test_id ID002_vit_tensorized_tle_tp_tinyimagenet_nowd_V2 --dataset tinyimagenet --model_type tensorized --num_layers 12 --epochs 100 --batch_size 64 --image_size 224 --patch_size 16 --embed_dim 16 16 3 --num_heads 2 2 3 --mlp_dim 32 32 3 --tensor_type tle tp --tdle_level 3 --weight_decay 0 --save_rate 20 --repeat_count 1
 python test.py  --test_id ID002_vit_tensorized_tle_tp_tinyimagenet_nowd_V2 --dataset tinyimagenet --model_type tensorized --num_layers 12 --batch_size 16 --image_size 224 --patch_size 16 --embed_dim 16 16 3 --num_heads 2 2 3 --mlp_dim 32 32 3 --tensor_type tle tp --tdle_level 3 --epochs 100 --save_rate 20 --repeat_count 1
 
-# Change the betas and lr back
+# Change the betas and lr back 0.9 0.98 5e-4
 python train.py --test_id ID002_vit_tensorized_tle_tp_tinyimagenet_nowd_V3 --dataset tinyimagenet --model_type tensorized --num_layers 12 --epochs 100 --batch_size 64 --image_size 224 --patch_size 16 --embed_dim 16 16 3 --num_heads 2 2 3 --mlp_dim 32 32 3 --tensor_type tle tp --tdle_level 3 --weight_decay 0 --save_rate 20 --repeat_count 1
 python test.py  --test_id ID002_vit_tensorized_tle_tp_tinyimagenet_nowd_V3 --dataset tinyimagenet --model_type tensorized --num_layers 12 --batch_size 16 --image_size 224 --patch_size 16 --embed_dim 16 16 3 --num_heads 2 2 3 --mlp_dim 32 32 3 --tensor_type tle tp --tdle_level 3 --epochs 100 --save_rate 20 --repeat_count 1
+
+python train.py --test_id ID002_vit_tensorized_tle_tp_tinyimagenet_nowd_V4 --dataset tinyimagenet --model_type tensorized --num_layers 12 --epochs 600 --batch_size 64 --image_size 224 --patch_size 16 --embed_dim 16 16 3 --num_heads 2 2 3 --mlp_dim 32 32 3 --tensor_type tle tp --tdle_level 3 --weight_decay 0 --save_rate 20 --repeat_count 1
+python test.py  --test_id ID002_vit_tensorized_tle_tp_tinyimagenet_nowd_V4 --dataset tinyimagenet --model_type tensorized --num_layers 12 --batch_size 16 --image_size 224 --patch_size 16 --embed_dim 16 16 3 --num_heads 2 2 3 --mlp_dim 32 32 3 --tensor_type tle tp --tdle_level 3 --epochs 600 --save_rate 20 --repeat_count 1
