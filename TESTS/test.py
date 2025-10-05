@@ -197,6 +197,7 @@ def build_model(args, num_classes, device):
             embed_dim=embed_dim_t,
             num_heads=num_heads_t,
             num_layers=args.num_layers,
+            num_tensorized=args.num_tensorized,
             mlp_dim=mlp_dim_t,
             dropout=args.dropout,
             bias=bool(args.bias),
@@ -256,6 +257,7 @@ def main():
     parser.add_argument("--image_size", type=int, default=224)
     parser.add_argument("--patch_size", type=int, default=16)
     parser.add_argument("--num_layers", type=int, default=12)
+    parser.add_argument("--num_tensorized", type=str, default='full')
     parser.add_argument("--num_classes", type=int, default=None)
     parser.add_argument("--embed_dim", nargs="+", default=["16", "16", "3"])
     parser.add_argument("--num_heads", nargs="+", default=["2", "2", "3"])

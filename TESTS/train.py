@@ -224,6 +224,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=400)
     parser.add_argument("--num_layers", type=int, default=12)
+    parser.add_argument("--num_tensorized", type=str, default='full')
     parser.add_argument("--image_size", type=int, default=224)
     parser.add_argument("--patch_size", type=int, default=16)
     parser.add_argument("--num_classes", type=int, default=None)
@@ -300,6 +301,7 @@ def main():
             embed_dim=embed_dim_t,
             num_heads=num_heads_t,
             num_layers=args.num_layers,
+            num_tensorized=args.num_tensorized,
             mlp_dim=mlp_dim_t,
             dropout=args.dropout,
             bias=bool(args.bias),
