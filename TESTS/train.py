@@ -62,31 +62,45 @@ def to_tuple_int(vals):
     return tuple(int(v) for v in vals)
 
 
-def build_transforms(image_size, gray_scale=False):
-    aug = [
-        RandAugment(),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
-        transforms.RandomRotation(10),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-        RandomErasing(p=0.25),
-    ]
-    base = [
-        transforms.Resize((image_size, image_size)),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-    ]
+def build_transforms(image_size, gray_scale=False, type="adamw"):
+    if type == "adamw":
+        aug = [
+            RandAugment(),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+            transforms.RandomRotation(10),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            RandomErasing(p=0.25),
+        ]
+        base = [
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
+    else:
+        aug = [
+            transforms.RandomHorizontalFlip(),
+            transforms.Resize((image_size, image_size)),
+            transforms.RandomCrop(image_size, padding=5),
+            transforms.RandomRotation(10),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
+        base = [
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
     if gray_scale:
         aug = [
             transforms.Resize((image_size, image_size)),
             transforms.Grayscale(num_output_channels=3),
-            RandAugment(),
             transforms.RandomHorizontalFlip(),
-            transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+            transforms.RandomCrop(image_size, padding=5),
+            transforms.RandomRotation(10),
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            RandomErasing(p=0.25),
         ]
         base = [
             transforms.Resize((image_size, image_size)),
@@ -98,10 +112,10 @@ def build_transforms(image_size, gray_scale=False):
 
 
 def get_loaders_and_meta(
-    dataset, data_dir, batch_size, image_size, train_size, repeat_count
+    type, dataset, data_dir, batch_size, image_size, train_size, repeat_count
 ):
     if dataset == "tinyimagenet":
-        ttr, tv, tt = build_transforms(image_size, gray_scale=False)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=False, type=type)
         train_loader, test_loader, _ = get_tinyimagenet_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -114,7 +128,7 @@ def get_loaders_and_meta(
         )
         return train_loader, test_loader, 200
     if dataset == "cifar10":
-        ttr, tv, tt = build_transforms(image_size, gray_scale=False)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=False, type=type)
         train_loader, test_loader = get_cifar10_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -126,7 +140,7 @@ def get_loaders_and_meta(
         )
         return train_loader, test_loader, 10
     if dataset == "cifar100":
-        ttr, tv, tt = build_transforms(image_size, gray_scale=False)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=False, type=type)
         train_loader, test_loader = get_cifar100_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -138,7 +152,7 @@ def get_loaders_and_meta(
         )
         return train_loader, test_loader, 100
     if dataset == "mnist":
-        ttr, tv, tt = build_transforms(image_size, gray_scale=True)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=True, type=type)
         train_loader, test_loader = get_mnist_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -150,7 +164,7 @@ def get_loaders_and_meta(
         )
         return train_loader, test_loader, 10
     if dataset == "fashionmnist":
-        ttr, tv, tt = build_transforms(image_size, gray_scale=True)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=True, type=type)
         train_loader, test_loader = get_fashionmnist_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -162,7 +176,7 @@ def get_loaders_and_meta(
         )
         return train_loader, test_loader, 10
     if dataset == "flowers102":
-        ttr, tv, tt = build_transforms(image_size, gray_scale=False)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=False, type=type)
         train_loader, test_loader = get_flowers102_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -174,7 +188,7 @@ def get_loaders_and_meta(
         )
         return train_loader, test_loader, 102
     if dataset == "oxford_pets":
-        ttr, tv, tt = build_transforms(image_size, gray_scale=False)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=False, type=type)
         train_loader, test_loader = get_oxford_pets_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -186,7 +200,7 @@ def get_loaders_and_meta(
         )
         return train_loader, test_loader, 37
     if dataset == "stl10":
-        ttr, tv, tt = build_transforms(image_size, gray_scale=False)
+        ttr, tv, tt = build_transforms(image_size, gray_scale=False, type=type)
         train_loader, test_loader = get_stl10_classification_dataloaders(
             data_dir=data_dir,
             transform_train=ttr,
@@ -221,10 +235,11 @@ def main():
     parser.add_argument(
         "--model_type", type=str, choices=["original", "tensorized"], required=True
     )
+    parser.add_argument("--type", type=str, default="adamw")
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=400)
     parser.add_argument("--num_layers", type=int, default=12)
-    parser.add_argument("--num_tensorized", type=str, default='full')
+    parser.add_argument("--num_tensorized", type=str, default="full")
     parser.add_argument("--image_size", type=int, default=224)
     parser.add_argument("--patch_size", type=int, default=16)
     parser.add_argument("--num_classes", type=int, default=None)
@@ -254,6 +269,7 @@ def main():
     )
 
     train_loader, test_loader, inferred_classes = get_loaders_and_meta(
+        args.type,
         args.dataset,
         args.data_dir,
         args.batch_size,
@@ -314,13 +330,17 @@ def main():
         ).to(device)
 
     num_parameters = count_parameters(model)
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-    optimizer = optim.AdamW(
-        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
-    )
-    scheduler = get_cosine_schedule_with_warmup(
-        optimizer, args.warmup_epochs, args.epochs
-    )
+    if args.type == "adamw":
+        criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+        optimizer = optim.AdamW(
+            model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+        )
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer, args.warmup_epochs, args.epochs
+        )
+    else:
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     result_dir = os.path.join(args.results_dir, args.test_id)
     acc_dir = os.path.join(result_dir, "accuracy_stats")
@@ -347,10 +367,14 @@ def main():
 
         for inputs, targets in loader:
             inputs, targets = inputs.to(device), targets.to(device)
-            inputs, ya, yb, lam = mixup_data(inputs, targets, alpha=0.8)
+            if args.type == "adamw":
+                inputs, ya, yb, lam = mixup_data(inputs, targets, alpha=0.8)
             optimizer.zero_grad(set_to_none=True)
             logits = model(inputs)
-            loss = mixup_criterion(criterion, logits, ya, yb, lam)
+            if args.type == "adamw":
+                loss = mixup_criterion(criterion, logits, ya, yb, lam)
+            else:
+                loss = criterion(logits, targets)
             loss.backward()
             optimizer.step()
 
@@ -375,7 +399,8 @@ def main():
     print(f"Training {args.model_type} for {args.epochs} epochs")
     for epoch in range(1, args.epochs + 1):
         report, top1 = train_epoch(train_loader, epoch)
-        scheduler.step()
+        if args.type == "adamw":
+            scheduler.step()
 
         if top1 > best_top1:
             best_top1 = top1
