@@ -141,7 +141,6 @@ class VisionTransformer(nn.Module):
         x = torch.cat([tensor_cls_token, patches], dim=1).to(self.device)
 
         x += self.pos_embedding
-
         for transformer_block in self.transformer_tensorized:
             x = transformer_block(x)
         if self.num_tensorized != "full":
