@@ -1,0 +1,14 @@
+parameters=115921
+dataset=cifar100
+model_type=tensorized
+embed_dim=(4, 4, 3)
+num_heads=(2, 2, 3)
+mlp_dim=(8, 8, 3)
+num_layers=9
+parameters=115921
+dataset=cifar100
+model_type=tensorized
+embed_dim=(4, 4, 3)
+num_heads=(2, 2, 3)
+mlp_dim=(8, 8, 3)
+num_layers=9
