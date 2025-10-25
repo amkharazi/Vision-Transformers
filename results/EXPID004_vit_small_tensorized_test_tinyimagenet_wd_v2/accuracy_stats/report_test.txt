@@ -1,0 +1,3 @@
+tensorized | test | weights=Model_epoch_20.pth | top1=0.1951 top2=0.2844 top3=0.3450 top4=0.3925 top5=0.4259 loss=0.059425 time=24.58s
+tensorized | test | weights=Model_epoch_40.pth | top1=0.2815 top2=0.3864 top3=0.4520 top4=0.5040 top5=0.5396 loss=0.051266 time=24.10s
+tensorized | test | weights=Best_Train_Model.pth | top1=0.2815 top2=0.3864 top3=0.4520 top4=0.5040 top5=0.5396 loss=0.051266 time=23.93s

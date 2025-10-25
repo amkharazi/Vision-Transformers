@@ -345,7 +345,7 @@ def main():
                 f'seed={args.seed}\n')
 
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-    optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.1)
+    optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.03)
     scheduler = get_cosine_schedule_with_warmup(optimizer, args.warmup_epochs, args.epochs)
 
     def train_epoch(loader, epoch):
