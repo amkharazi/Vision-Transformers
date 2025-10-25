@@ -252,7 +252,7 @@ def main():
 
     total_param = count_parameters(model)
     with open(os.path.join(model_dir, 'model_info.txt'), 'a') as f:
-        f.write(f'model_type={args.model_type}\n'
+        f.write(f'model_type=tensor\n'
                 f'num_parameters_total={total_param}\n'
                 f'dataset={args.dataset}\n'
                 f'seed={args.seed}\n')
@@ -284,7 +284,7 @@ def main():
         elapsed = time.time() - start
         top_values = [correct[k] / len(loader.dataset) for k in (1, 2, 3, 4, 5)]
         avg_loss = running_loss / len(loader.dataset)
-        report = (f'{args.model_type} | epoch {epoch} | '
+        report = (f'tensor | epoch {epoch} | '
                   f'top1={top_values[0]:.4f} top2={top_values[1]:.4f} top3={top_values[2]:.4f} '
                   f'top4={top_values[3]:.4f} top5={top_values[4]:.4f} '
                   f'loss={avg_loss:.6f} time={elapsed:.2f}s')
@@ -292,7 +292,7 @@ def main():
         return report, float(top_values[0])
 
     best_top1 = -1.0
-    print(f"Training {args.model_type} for {args.epochs} epochs")
+    print(f"Training tensor for {args.epochs} epochs")
     for epoch in range(1, args.epochs + 1):
         report, top1 = train_epoch(train_loader, epoch)
         scheduler.step()

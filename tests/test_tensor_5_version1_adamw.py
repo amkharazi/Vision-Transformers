@@ -249,7 +249,7 @@ def main():
         state = torch.load(weights_path, map_location=device)
         model.load_state_dict(state, strict=False)
         top1, top2, top3, top4, top5, loss, elapsed = evaluate_model(model, test_loader, device)
-        report = (f'{args.model_type} | test | weights={os.path.basename(weights_path)} | '
+        report = (f'tensor | test | weights={os.path.basename(weights_path)} | '
                   f'top1={top1:.4f} top2={top2:.4f} top3={top3:.4f} top4={top4:.4f} top5={top5:.4f} '
                   f'loss={loss:.6f} time={elapsed:.2f}s')
         print(report)
