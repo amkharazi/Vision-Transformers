@@ -218,7 +218,7 @@ def main():
     if args.seed is not None:
         set_seed(args.seed)
 
-    test_loader = get_test_loader(args.dataset, args.data_root, args.batch_size, args.image_size, args.train_size)
+    test_loader = get_test_loader(args.dataset, args.data_root, args.batch_size, args.image_size)
 
     img_shape = (args.batch_size, 3, args.image_size, args.image_size)
     tensor_kwargs = vars(args)
