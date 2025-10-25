@@ -26,7 +26,7 @@ from utils.stl10_classification_loaders import get_stl10_classification_dataload
 from utils.accuracy_measures import topk_accuracy
 from utils.num_param import count_parameters
 
-from models.vit_original import VisionTransformer
+from models.vit_tensor_3 import VisionTransformer
 
 
 def set_seed(seed: int = 42):
@@ -235,15 +235,16 @@ def main():
     train_loader = get_train_loader(args.dataset, args.data_root, args.batch_size, args.image_size, args.train_size)
     
     model = VisionTransformer(
+        batch_size=args.batch_size,
         image_size=args.image_size,
         patch_size=16,
         in_chans=3,
         num_classes=200,
-        embed_dim=768,
+        embed_dim=(3,16,16),
         depth=12,
-        num_heads=12,
-        mlp_ratio=4.0,
-        qkv_bias=True,
+        num_heads=(3,2,2),
+        mlp_dim=(3,32,32),
+        bias=True,
         drop=0.0,
         drop_path=0.0,
     ).to(device)

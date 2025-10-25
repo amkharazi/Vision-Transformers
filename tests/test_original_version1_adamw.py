@@ -233,7 +233,7 @@ def main():
 
     def eval_weights_file(weights_path: str) -> str:
         model = VisionTransformer(
-            image_size=224,
+            image_size=args.image_size,
             patch_size=16,
             in_chans=3,
             num_classes=200,

@@ -244,7 +244,7 @@ if __name__ == "__main__":
         in_chans=3,
         num_classes=200,
         embed_dim=(3,16,16),
-        depth=1,
+        depth=12,
         num_heads=(3,2,2),
         mlp_dim=(3, 32,32),
         bias=True,
