@@ -204,7 +204,7 @@ def main():
     p.add_argument('--run_id', type=str, required=True)
     p.add_argument('--weights', type=str, default=None)
     p.add_argument('--dataset', type=str, default='cifar10')
-    p.add_argument('--data_root', type=str, default='./datasets')
+    p.add_argument('--data_root', type=str, default='../datasets')
     p.add_argument('--batch_size', type=int, default=256)
     p.add_argument('--image_size', type=int, default=32)
     p.add_argument('--train_size', type=str, default='default')

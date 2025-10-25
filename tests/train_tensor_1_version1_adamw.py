@@ -211,7 +211,7 @@ def main():
     p = argparse.ArgumentParser("trainer")
     p.add_argument('--run_id', type=str, default='Run_001')
     p.add_argument('--dataset', type=str, default='cifar10')
-    p.add_argument('--data_root', type=str, default='./datasets')
+    p.add_argument('--data_root', type=str, default='../datasets')
     p.add_argument('--batch_size', type=int, default=256)
     p.add_argument('--epochs', type=int, default=200)
     p.add_argument('--warmup_epochs', type=int, default=10)
