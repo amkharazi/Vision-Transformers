@@ -232,7 +232,7 @@ def main():
     os.makedirs(acc_dir, exist_ok=True)
     os.makedirs(model_dir, exist_ok=True)
 
-    train_loader = get_train_loader(args.dataset, args.data_root, args.batch_size, args.image_size)
+    train_loader = get_train_loader(args.dataset, args.data_root, args.batch_size, args.image_size, 'default')
     
     model = VisionTransformer(
         image_size=args.image_size,
