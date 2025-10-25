@@ -226,7 +226,7 @@ def main():
     if args.seed is not None:
         set_seed(args.seed)
 
-    result_dir = os.path.join('./results', args.run_id)
+    result_dir = os.path.join('../results', args.run_id)
     acc_dir = os.path.join(result_dir, 'accuracy_stats')
     model_dir = os.path.join(result_dir, 'model_stats')
     os.makedirs(acc_dir, exist_ok=True)

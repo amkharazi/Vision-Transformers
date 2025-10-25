@@ -223,7 +223,7 @@ def main():
     img_shape = (args.batch_size, 3, args.image_size, args.image_size)
     tensor_kwargs = vars(args)
 
-    result_dir = os.path.join('./results', args.run_id)
+    result_dir = os.path.join('../results', args.run_id)
     acc_dir = os.path.join(result_dir, 'accuracy_stats')
     model_dir = os.path.join(result_dir, 'model_stats')
     os.makedirs(acc_dir, exist_ok=True)
