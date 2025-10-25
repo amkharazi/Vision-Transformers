@@ -203,7 +203,6 @@ def main():
     p = argparse.ArgumentParser("tester")
     p.add_argument('--run_id', type=str, required=True)
     p.add_argument('--weights', type=str, default=None)
-    p.add_argument('--model_type', type=str, default='pretrained', choices=['pretrained', 'tensorized', 'original'])
     p.add_argument('--dataset', type=str, default='cifar10')
     p.add_argument('--data_root', type=str, default='./datasets')
     p.add_argument('--batch_size', type=int, default=256)
@@ -237,7 +236,7 @@ def main():
             image_size=args.image_size,
             patch_size=16,
             in_chans=3,
-            num_classes=200,
+            num_classes=args.num_classes,
             embed_dim=(3,16,16),
             depth=12,
             num_heads=(3,2,2),

@@ -238,7 +238,7 @@ def main():
         image_size=args.image_size,
         patch_size=16,
         in_chans=3,
-        num_classes=200,
+        num_classes=args.num_classes,
         embed_dim=768,
         depth=12,
         num_heads=12,
