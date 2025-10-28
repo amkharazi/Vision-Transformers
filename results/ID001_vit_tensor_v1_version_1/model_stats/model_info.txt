@@ -1,4 +1,4 @@
 model_type=tensor
-num_parameters_total=37128420
+num_parameters_total=28858894
 dataset=tinyimagenet
 seed=None
