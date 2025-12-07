@@ -204,7 +204,8 @@ class VisionTransformer(nn.Module):
                 num_patches=(num_patches + 1), 
                 batch_size=batch_size
             )
-            for i in range(depth//3)
+            # for i in range(depth//3)
+            for i in range(depth)
         ])
         self.norm = nn.LayerNorm(embed_dim)
         self.head = TP(input_size=(batch_size, embed_dim[0], embed_dim[1], embed_dim[2]),
