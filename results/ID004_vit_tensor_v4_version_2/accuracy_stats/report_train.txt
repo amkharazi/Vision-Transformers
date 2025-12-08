@@ -1,0 +1,2 @@
+tensor | epoch 1 | top1=0.0048 top2=0.0100 top3=0.0152 top4=0.0205 top5=0.0255 loss=0.169756 time=402.31s
+tensor | epoch 2 | top1=0.0092 top2=0.0169 top3=0.0248 top4=0.0319 top5=0.0393 loss=0.164582 time=381.04s
