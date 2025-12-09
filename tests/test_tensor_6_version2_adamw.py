@@ -273,7 +273,7 @@ def main():
             gumbel_tau=1.0,
             gumbel_hard=True,
             print_mode_weights=False,
-            tdle_depth=12,
+            tdle_depth=1,
             bias=True,
             drop=0.0,
             drop_path=0.0,
