@@ -6,3 +6,6 @@ python test_tensor_4_version2_adamw.py --run_id ID004_vit_tensor_v4_version_2 --
 
 python train_tensor_6_version2_adamw.py --run_id ID006_vit_tensor_v6_version_2 --dataset tinyimagenet --batch_size 32 --epochs 200 --image_size 224 --num_classes 200 
 python test_tensor_6_version2_adamw.py --run_id ID006_vit_tensor_v6_version_2 --dataset tinyimagenet --batch_size 32 --image_size 224 --num_classes 200
+
+python train_tensor_7_version2_adamw.py --run_id ID007_vit_tensor_v7_version_2 --dataset tinyimagenet --batch_size 32 --epochs 200 --image_size 224 --num_classes 200 
+python test_tensor_7_version2_adamw.py --run_id ID007_vit_tensor_v7_version_2 --dataset tinyimagenet --batch_size 32 --image_size 224 --num_classes 200
