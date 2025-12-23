@@ -26,7 +26,7 @@ from utils.stl10_classification_loaders import get_stl10_classification_dataload
 from utils.accuracy_measures import topk_accuracy
 from utils.num_param import count_parameters
 
-from models.vit_tensor_6 import VisionTransformer
+from models.vit_tensor_7 import VisionTransformer
 
 
 def set_seed(seed: int = 42):
@@ -219,7 +219,7 @@ def main():
     p.add_argument('--num_classes', type=int, default=10)
     p.add_argument('--seed', type=int, default=None)
     p.add_argument('--save_rate', type=int, default=5)
-
+    
     args = p.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -233,22 +233,17 @@ def main():
     os.makedirs(model_dir, exist_ok=True)
 
     train_loader = get_train_loader(args.dataset, args.data_root, args.batch_size, args.image_size, 'default')
-
+    
     model = VisionTransformer(
         batch_size=args.batch_size,
         image_size=args.image_size,
         patch_size=16,
         in_chans=3,
         num_classes=args.num_classes,
-        embed_dim=(3, 16, 16),
+        embed_dim=(3,16,16),
         depth=12,
-        num_heads=(3, 2, 2),
-        mlp_dim=(3, 32, 32),
-        num_modes=3,
-        gumbel_tau=1.0,
-        gumbel_hard=True,
-        print_mode_weights=False,  # set True if you want to log per-layer mode weights
-        tdle_depth=3,
+        num_heads=(3,2,2),
+        mlp_dim=(3,32,32),
         bias=True,
         drop=0.0,
         drop_path=0.0,
@@ -256,15 +251,13 @@ def main():
 
     total_param = count_parameters(model)
     with open(os.path.join(model_dir, 'model_info.txt'), 'a') as f:
-        f.write(
-            f'model_type=tensor\n'
-            f'num_parameters_total={total_param}\n'
-            f'dataset={args.dataset}\n'
-            f'seed={args.seed}\n'
-        )
+        f.write(f'model_type=tensor\n'
+                f'num_parameters_total={total_param}\n'
+                f'dataset={args.dataset}\n'
+                f'seed={args.seed}\n')
 
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-    optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.03)
+    optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.05)
     scheduler = get_cosine_schedule_with_warmup(optimizer, args.warmup_epochs, args.epochs)
 
     def train_epoch(loader, epoch):
@@ -290,12 +283,10 @@ def main():
         elapsed = time.time() - start
         top_values = [correct[k] / len(loader.dataset) for k in (1, 2, 3, 4, 5)]
         avg_loss = running_loss / len(loader.dataset)
-        report = (
-            f'tensor | epoch {epoch} | '
-            f'top1={top_values[0]:.4f} top2={top_values[1]:.4f} top3={top_values[2]:.4f} '
-            f'top4={top_values[3]:.4f} top5={top_values[4]:.4f} '
-            f'loss={avg_loss:.6f} time={elapsed:.2f}s'
-        )
+        report = (f'tensor | epoch {epoch} | '
+                  f'top1={top_values[0]:.4f} top2={top_values[1]:.4f} top3={top_values[2]:.4f} '
+                  f'top4={top_values[3]:.4f} top5={top_values[4]:.4f} '
+                  f'loss={avg_loss:.6f} time={elapsed:.2f}s')
         print(report)
         return report, float(top_values[0])
 

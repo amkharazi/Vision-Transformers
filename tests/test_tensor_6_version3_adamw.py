@@ -23,7 +23,7 @@ from utils.stl10_classification_loaders import get_stl10_classification_dataload
 
 from utils.accuracy_measures import topk_accuracy
 
-from models.vit_tensor_7 import VisionTransformer
+from models.vit_tensor_6 import VisionTransformer
 
 
 def set_seed(seed: int = 42):
@@ -53,7 +53,11 @@ def get_test_loader(dataset: str, data_root: str, batch_size: int, image_size: i
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        return get_cifar10_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)[1]
+        return get_cifar10_dataloaders(
+            data_root, transform_train, transform_test,
+            batch_size, image_size, train_size, repeat_count=5
+        )[1]
+
     if dataset == 'cifar100':
         transform_train = transforms.Compose([
             RandAugment(),
@@ -69,7 +73,11 @@ def get_test_loader(dataset: str, data_root: str, batch_size: int, image_size: i
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        return get_cifar100_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)[1]
+        return get_cifar100_dataloaders(
+            data_root, transform_train, transform_test,
+            batch_size, image_size, train_size, repeat_count=5
+        )[1]
+
     if dataset == 'mnist':
         transform_train = transforms.Compose([
             transforms.Resize((image_size, image_size)),
@@ -87,7 +95,11 @@ def get_test_loader(dataset: str, data_root: str, batch_size: int, image_size: i
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        return get_mnist_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)[1]
+        return get_mnist_dataloaders(
+            data_root, transform_train, transform_test,
+            batch_size, image_size, train_size, repeat_count=5
+        )[1]
+
     if dataset == 'tinyimagenet':
         transform_train = transforms.Compose([
             RandAugment(),
@@ -103,7 +115,11 @@ def get_test_loader(dataset: str, data_root: str, batch_size: int, image_size: i
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        return get_tinyimagenet_dataloaders(data_root, transform_train, transform_val, transform_val, batch_size, image_size, repeat_count=5)[1]
+        return get_tinyimagenet_dataloaders(
+            data_root, transform_train, transform_val, transform_val,
+            batch_size, image_size, repeat_count=5
+        )[1]
+
     if dataset == 'fashionmnist':
         transform_train = transforms.Compose([
             transforms.Resize((image_size, image_size)),
@@ -121,7 +137,11 @@ def get_test_loader(dataset: str, data_root: str, batch_size: int, image_size: i
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
-        return get_fashionmnist_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)[1]
+        return get_fashionmnist_dataloaders(
+            data_root, transform_train, transform_test,
+            batch_size, image_size, train_size, repeat_count=5
+        )[1]
+
     if dataset == 'flowers102':
         transform_train = transforms.Compose([
             RandAugment(),
@@ -137,7 +157,11 @@ def get_test_loader(dataset: str, data_root: str, batch_size: int, image_size: i
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        return get_flowers102_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)[1]
+        return get_flowers102_dataloaders(
+            data_root, transform_train, transform_test,
+            batch_size, image_size, train_size, repeat_count=5
+        )[1]
+
     if dataset == 'oxford_pets':
         transform_train = transforms.Compose([
             RandAugment(),
@@ -153,7 +177,11 @@ def get_test_loader(dataset: str, data_root: str, batch_size: int, image_size: i
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        return get_oxford_pets_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)[1]
+        return get_oxford_pets_dataloaders(
+            data_root, transform_train, transform_test,
+            batch_size, image_size, train_size, repeat_count=5
+        )[1]
+
     if dataset == 'stl10':
         transform_train = transforms.Compose([
             RandAugment(),
@@ -169,12 +197,16 @@ def get_test_loader(dataset: str, data_root: str, batch_size: int, image_size: i
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        return get_stl10_classification_dataloaders(data_root, transform_train, transform_test, batch_size, image_size, train_size, repeat_count=5)[1]
+        return get_stl10_classification_dataloaders(
+            data_root, transform_train, transform_test,
+            batch_size, image_size, train_size, repeat_count=5
+        )[1]
+
     raise ValueError(f"Unknown dataset: {dataset}")
 
 
 @torch.no_grad()
-def evaluate_model(model: nn.Module, loader, device: str) -> Tuple[float, float, float, float, float, float]:
+def evaluate_model(model: nn.Module, loader, device: str) -> Tuple[float, float, float, float, float, float, float]:
     criterion = nn.CrossEntropyLoss()
     start = time.time()
     running_loss = 0.0
@@ -211,17 +243,13 @@ def main():
     p.add_argument('--num_classes', type=int, default=10)
     p.add_argument('--seed', type=int, default=None)
 
-
     args = p.parse_args()
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = 'cuda' if torch.cuda.is_available() else 'device'
     if args.seed is not None:
         set_seed(args.seed)
 
     test_loader = get_test_loader(args.dataset, args.data_root, args.batch_size, args.image_size, 'default')
-
-    img_shape = (args.batch_size, 3, args.image_size, args.image_size)
-    tensor_kwargs = vars(args)
 
     result_dir = os.path.join('../results', args.run_id)
     acc_dir = os.path.join(result_dir, 'accuracy_stats')
@@ -237,20 +265,30 @@ def main():
             patch_size=16,
             in_chans=3,
             num_classes=args.num_classes,
-            embed_dim=(3,16,16),
+            embed_dim=(3, 16, 16),
             depth=12,
-            num_heads=(3,2,2),
-            mlp_dim=(3,32,32),
+            num_heads=(3, 2, 2),
+            mlp_dim=(3, 32, 32),
+            num_modes=3,
+            gumbel_tau=1.0,
+            gumbel_hard=True,
+            print_mode_weights=False,
+            tdle_depth=3,
             bias=True,
             drop=0.0,
             drop_path=0.0,
         ).to(device)
+
         state = torch.load(weights_path, map_location=device)
         model.load_state_dict(state, strict=False)
+
         top1, top2, top3, top4, top5, loss, elapsed = evaluate_model(model, test_loader, device)
-        report = (f'tensor | test | weights={os.path.basename(weights_path)} | '
-                  f'top1={top1:.4f} top2={top2:.4f} top3={top3:.4f} top4={top4:.4f} top5={top5:.4f} '
-                  f'loss={loss:.6f} time={elapsed:.2f}s')
+        report = (
+            f'tensor | test | weights={os.path.basename(weights_path)} | '
+            f'top1={top1:.4f} top2={top2:.4f} top3={top3:.4f} '
+            f'top4={top4:.4f} top5={top5:.4f} '
+            f'loss={loss:.6f} time={elapsed:.2f}s'
+        )
         print(report)
         with open(log_path, 'a') as f:
             f.write(report + '\n')
