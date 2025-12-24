@@ -15,3 +15,6 @@ python test_tensor_7_version2_adamw.py --run_id ID007_vit_tensor_v7_version_2 --
 
 python train_tensor_7_version2_adamw.py --run_id ID007_vit_tensor_v7_version_3 --dataset tinyimagenet --batch_size 32 --epochs 600 --image_size 224 --num_classes 200 
 python test_tensor_7_version2_adamw.py --run_id ID007_vit_tensor_v7_version_3 --dataset tinyimagenet --batch_size 32 --image_size 224 --num_classes 200
+
+python train_original_version2_adamw.py --run_id ID000_vit_original_version_3 --dataset tinyimagenet --batch_size 32 --epochs 600 --image_size 224 --num_classes 200
+python test_original_version2_adamw.py --run_id ID000_vit_original_version_3 --dataset tinyimagenet --batch_size 32 --image_size 224 --num_classes 200
