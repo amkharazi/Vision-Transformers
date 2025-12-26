@@ -1,0 +1,4 @@
+model_type=original
+num_parameters_total=29249480
+dataset=tinyimagenet
+seed=None
